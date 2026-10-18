@@ -38,6 +38,9 @@ const AskLocalToggler: React.FC<AskLocalTogglerProps> = ({ bookKey, title }) => 
 
   const handleToggle = () => {
     if (!isOpen) {
+      // The expert drawer shares this right-hand slot; `ideas-close` is the
+      // signal it listens to when another drawer takes over.
+      eventDispatcher.dispatch('ideas-close', { bookKey });
       const docs = getView(bookKey)?.renderer.getContents() ?? [];
       setSelection(
         docs.reduce((text, { doc }) => text || (doc?.getSelection()?.toString().trim() ?? ''), ''),

@@ -53,6 +53,9 @@ describe('emmProvider', () => {
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual({
       style: 'humanities.faithful',
+      // Published by the reader chrome so the service can resolve a per-book
+      // expert binding; empty outside the reader.
+      book: '',
       paragraphs: ['Hello', 'World'],
     });
   });

@@ -42,6 +42,17 @@ const readStyle = (): string => {
   }
 };
 
+const CURRENT_BOOK_KEY = 'emm.currentBook';
+
+/** The book the reader currently has open, published by the reader chrome. */
+const readCurrentBook = (): string => {
+  try {
+    return window.localStorage?.getItem(CURRENT_BOOK_KEY) ?? '';
+  } catch {
+    return '';
+  }
+};
+
 const fail: (detail: string) => never = (detail) => {
   throw new Error(`emm: ${detail}`);
 };
@@ -82,6 +93,9 @@ export const emmProvider: TranslationProvider = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         style: readStyle(),
+        // The book title lets the service apply a per-book expert binding; it is
+        // absent in tests and in the web build, where the service ignores it.
+        book: readCurrentBook(),
         paragraphs: requestIndices.map((index) => texts[index]),
       }),
       signal,

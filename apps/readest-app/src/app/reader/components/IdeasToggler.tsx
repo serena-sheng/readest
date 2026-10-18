@@ -21,10 +21,28 @@ const IdeasToggler: React.FC<IdeasTogglerProps> = ({ bookKey, title }) => {
 
   useEffect(() => setMounted(true), []);
 
+  // `ideas-close` is the shared-slot signal the expert drawer also listens to,
+  // so it closes this panel without a second event name. Events this panel
+  // dispatches itself carry `from: 'ideas'` and are ignored.
+  useEffect(() => {
+    const close = (event: CustomEvent) => {
+      const detail = event.detail as { bookKey?: string; from?: string } | undefined;
+      if (detail?.from === 'ideas') return;
+      if (detail?.bookKey && detail.bookKey !== bookKey) return;
+      setIsOpen(false);
+    };
+    eventDispatcher.on('ideas-close', close);
+    return () => eventDispatcher.off('ideas-close', close);
+  }, [bookKey]);
+
   const handleToggle = () => {
     // Both panels own the same fixed right-hand slot, so opening this one
-    // closes the ask drawer through the channel its toggler already listens to.
-    if (!isOpen) eventDispatcher.dispatch('ask-local-close', { bookKey });
+    // closes the ask and expert drawers through the channels their togglers
+    // already listen to.
+    if (!isOpen) {
+      eventDispatcher.dispatch('ask-local-close', { bookKey });
+      eventDispatcher.dispatch('ideas-close', { bookKey, from: 'ideas' });
+    }
     setIsOpen(!isOpen);
   };
 
