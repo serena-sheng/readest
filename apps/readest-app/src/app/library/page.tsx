@@ -29,6 +29,7 @@ import { splitLibraryOpenIds } from '@/utils/audiobook';
 import { listFormater, markBookDeleted } from '@/utils/book';
 import { getImportErrorMessage } from '@/services/errors';
 import { ingestFile } from '@/services/ingestService';
+import { importFromLocalLibrary } from '@/services/librarySource';
 import { saveBookMetadataEdit } from '@/services/bookMetadataEdit';
 import { eventDispatcher } from '@/utils/event';
 import { transferManager } from '@/services/transferManager';
@@ -1322,6 +1323,74 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     });
   };
 
+  /**
+   * Pull the books listed by the local CommonReader service
+   * (`commonreader-ai/server.py`) into Readest. Read-only one-way bridge:
+   * every book is downloaded to a File and handed to the same `ingestFile`
+   * path as a picked local file, so hashing / covers / configs all behave
+   * normally. Existing titles are skipped before the download starts, and a
+   * single bad book never stops the run.
+   */
+  const handleImportFromLocalLibrary = async () => {
+    setIsSelectMode(false);
+    if (!appService) return;
+    const { library } = useLibraryStore.getState();
+    // One index for the whole run: importBook appends each new book to it, so
+    // two remote entries that resolve to the same file dedup within the batch.
+    const lookupIndex = buildBookLookupIndex(library, appService.osPlatform);
+    const liveSettings = useSettingsStore.getState().settings;
+    const appBooksPrefix = liveSettings.localBooksDir || null;
+    setLoading(true);
+    try {
+      const result = await importFromLocalLibrary({
+        books: library,
+        onProgress: ({ phase, index, total, title }) => {
+          if (phase !== 'download') return;
+          eventDispatcher.dispatch('toast', {
+            message: _('Importing from local library ({{index}}/{{total}}): {{title}}', {
+              index: index + 1,
+              total,
+              title,
+            }),
+            timeout: 1500,
+            type: 'info',
+          });
+        },
+        importFile: async (file) => {
+          const book = await ingestFile(
+            { file, books: library, lookupIndex },
+            { appService, settings: liveSettings, isLoggedIn: !!user, appBooksPrefix },
+          );
+          if (book) await updateBooks(envConfig, [book], { skipSave: true });
+          return book;
+        },
+      });
+
+      if (result.imported > 0) {
+        await appService.saveLibraryBooks(useLibraryStore.getState().library);
+        pushLibrary();
+      }
+      eventDispatcher.dispatch('toast', {
+        message: _(
+          'Local library import: {{imported}} imported, {{skipped}} skipped, {{failed}} failed',
+          { imported: result.imported, skipped: result.skipped, failed: result.failed },
+        ),
+        timeout: 5000,
+        type: result.failed > 0 ? 'warning' : 'success',
+      });
+    } catch (error) {
+      eventDispatcher.dispatch('toast', {
+        message: _('Failed to import from local library: {{message}}', {
+          message: error instanceof Error ? error.message : String(error),
+        }),
+        timeout: 5000,
+        type: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useAndroidPickedBooks(appService, (files) => {
     importBooks(files, getImportTargetGroupId());
   });
@@ -1917,6 +1986,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           onImportBooksFromDirectory={
             appService?.canReadExternalDir ? handleImportBooksFromDirectory : undefined
           }
+          onImportFromLocalLibrary={handleImportFromLocalLibrary}
           onImportFromWebBrowser={isTauriAppPlatform() ? () => setShowWebSources(true) : undefined}
           onImportBookFromNovelUrl={
             isTauriAppPlatform() ? () => setShowImportNovel(true) : undefined
@@ -2080,6 +2150,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           onImportBooksFromDirectory={
             appService?.canReadExternalDir ? handleImportBooksFromDirectory : undefined
           }
+          onImportFromLocalLibrary={handleImportFromLocalLibrary}
           onImportFromWebBrowser={isTauriAppPlatform() ? () => setShowWebSources(true) : undefined}
           onImportBookFromNovelUrl={
             isTauriAppPlatform() ? () => setShowImportNovel(true) : undefined

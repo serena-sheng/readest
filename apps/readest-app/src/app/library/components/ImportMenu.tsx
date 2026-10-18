@@ -12,6 +12,7 @@ export interface ImportMenuProps {
   setIsDropdownOpen?: (open: boolean) => void;
   onImportBooksFromFiles: () => void;
   onImportBooksFromDirectory?: () => void;
+  onImportFromLocalLibrary?: () => void;
   onImportFromWebBrowser?: () => void;
   onImportBookFromNovelUrl?: () => void;
   onOpenCatalogManager: () => void;
@@ -23,6 +24,7 @@ const ImportMenu: React.FC<ImportMenuProps> = ({
   setIsDropdownOpen,
   onImportBooksFromFiles,
   onImportBooksFromDirectory,
+  onImportFromLocalLibrary,
   onImportFromWebBrowser,
   onImportBookFromNovelUrl,
   onOpenCatalogManager,
@@ -38,6 +40,11 @@ const ImportMenu: React.FC<ImportMenuProps> = ({
 
   const handleImportFromDirectory = () => {
     onImportBooksFromDirectory?.();
+    setIsDropdownOpen?.(false);
+  };
+
+  const handleImportFromLocalLibrary = () => {
+    onImportFromLocalLibrary?.();
     setIsDropdownOpen?.(false);
   };
 
@@ -79,6 +86,13 @@ const ImportMenu: React.FC<ImportMenuProps> = ({
           label={_('From Directory')}
           Icon={<IoFileTray className='h-5 w-5' />}
           onClick={handleImportFromDirectory}
+        />
+      )}
+      {onImportFromLocalLibrary && (
+        <MenuItem
+          label={_('From Local Library')}
+          Icon={<LuLibrary className='h-5 w-5' />}
+          onClick={handleImportFromLocalLibrary}
         />
       )}
       <hr aria-hidden='true' className='border-base-200 my-1' />

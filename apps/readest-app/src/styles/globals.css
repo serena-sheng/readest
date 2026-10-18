@@ -1641,16 +1641,18 @@ html[data-theme^='emm'] .books-grid {
   );
 }
 
-html[data-theme^='emm'] .books-grid {
+/* Padding changes the measured viewport, so it must never apply while a book is
+   open: foliate paginates against the pre-padding size and later pages come out
+   blank. The reader grid always contains a .foliate-viewer; the library grid
+   never does. */
+html[data-theme^='emm'] .books-grid:not(:has(.foliate-viewer)) {
   padding: 18px 24px 24px;
 }
 
 html[data-theme^='emm'] .books-grid > [data-view-transition-root] {
   border-radius: var(--radius-box);
   background-color: var(--color-base-100);
-  box-shadow:
-    0 18px 50px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
 }
 
 /* HeaderBar sits on the card: no bar, no divider shadow. Its wrapper and the
@@ -1679,12 +1681,19 @@ html[data-theme^='emm'] .header-bar .btn:hover {
 
 /* HeaderBar's centred line doubles as the quiet imprint when the page header
    is turned off: 10.5px, wide tracking, 55% ink. */
+/* The running imprint (SectionInfo) already prints the chapter/title inside the
+   page, so the Bar's own centred line would sit under the toolbar buttons and
+   overlap them. Hide it for emm only. */
+html[data-theme^='emm'] .header-bar .header-title {
+  visibility: hidden;
+}
+
 html[data-theme^='emm'] .header-bar .header-title > div {
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-base-content) 55%, transparent);
+  color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
 }
 
 /* The real running page header. SectionInfo renders the current section label
@@ -1695,9 +1704,9 @@ html[data-theme^='emm'] .header-bar .header-title > div {
 html[data-theme^='emm'] .sectioninfo:not(.writing-vertical-rl) > span {
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-base-content) 55%, transparent);
+  color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
 }
 
 /*

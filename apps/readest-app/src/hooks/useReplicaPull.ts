@@ -4,6 +4,7 @@ import {
 } from '@/services/bookshelves/persistence';
 import { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { useEnv } from '@/context/EnvContext';
 import { useCustomDictionaryStore, findDictionaryByContentId } from '@/store/customDictionaryStore';
 import {
@@ -684,6 +685,11 @@ export const useReplicaPull = ({
   }, [user]);
 
   useEffect(() => {
+    // Local build: Readest Cloud replicas (dictionaries/fonts/textures) are not
+    // used here — our data is local and iCloud is the only cloud. Skip the pull
+    // entirely so a missing/blocked Supabase endpoint cannot raise the red
+    // "1 Issue" badge for a feature this build never relies on.
+    if (LOCAL_UNLOCK) return;
     if (!appService) return;
     if (!user) return;
 
