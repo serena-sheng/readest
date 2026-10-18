@@ -1628,7 +1628,7 @@ html[data-theme^='emm'] .books-grid {
 }
 
 html[data-theme^='emm'] .books-grid {
-  padding-block: 18px 24px;
+  padding: 18px 24px 24px;
 }
 
 html[data-theme^='emm'] .books-grid > [data-view-transition-root] {
@@ -1666,7 +1666,7 @@ html[data-theme^='emm'] .header-bar .btn:hover {
 /* HeaderBar's centred line doubles as the quiet imprint when the page header
    is turned off: 10.5px, wide tracking, 55% ink. */
 html[data-theme^='emm'] .header-bar .header-title > div {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1679,7 +1679,7 @@ html[data-theme^='emm'] .header-bar .header-title > div {
    parent's inline font-size/colour (a directly-specified value always beats
    an inherited one), giving the label the same imprint as the header line. */
 html[data-theme^='emm'] .sectioninfo:not(.writing-vertical-rl) > span {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;

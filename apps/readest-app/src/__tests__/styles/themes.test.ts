@@ -272,14 +272,14 @@ describe('emm theme', () => {
 
   it('maps the prototype tokens onto the daisyUI slots', () => {
     expect(emm!.colors.light).toMatchObject({
-      'base-100': '#ffffff',
+      'base-100': '#fbfaf7',
       'base-200': '#e9e9e7',
       'base-content': '#1d1d1f',
       primary: '#305f4b',
       'primary-content': '#ffffff',
     });
     expect(emm!.colors.dark).toMatchObject({
-      'base-100': '#212427',
+      'base-100': '#23262a',
       'base-200': '#16181a',
       'base-content': '#ededed',
       primary: '#7fb79c',
@@ -290,8 +290,8 @@ describe('emm theme', () => {
   it('pins its own panel and control radii', () => {
     for (const scheme of ['light', 'dark'] as const) {
       const vars = themeVariables(emm!.colors[scheme], scheme);
-      expect(vars['--radius-box']).toBe('1rem');
-      expect(vars['--radius-field']).toBe('0.75rem');
+      expect(vars['--radius-box']).toBe('.75rem');
+      expect(vars['--radius-field']).toBe('.625rem');
       expect(vars['--color-primary-content']).toBe(scheme === 'dark' ? '#16181a' : '#ffffff');
     }
   });

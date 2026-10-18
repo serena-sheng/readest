@@ -165,7 +165,7 @@ const _ = (stubKey: string) => stubKey;
 // The slots the prototype does not name (secondary, accent, neutral) follow the
 // tinycolor rules in `generate*Palette`.
 const emmLightPalette: ThemedPalette = {
-  'base-100': '#ffffff', // card
+  'base-100': '#fbfaf7', // card — warm paper, less glare
   'base-200': '#e9e9e7', // canvas
   'base-300': '#d9d9d7', // rgba(0, 0, 0, 0.07) over the canvas
   'base-content': '#1d1d1f', // ink
@@ -175,12 +175,12 @@ const emmLightPalette: ThemedPalette = {
   'primary-content': '#ffffff',
   secondary: '#52a380',
   accent: '#305f38',
-  'radius-box': '1rem',
-  'radius-field': '0.75rem',
+  'radius-box': '.75rem',
+  'radius-field': '.625rem',
 };
 
 const emmDarkPalette: ThemedPalette = {
-  'base-100': '#212427', // card
+  'base-100': '#23262a', // card — slightly lifted from canvas
   'base-200': '#16181a', // canvas
   'base-300': '#2b2d2f', // rgba(255, 255, 255, 0.09) over the canvas
   'base-content': '#ededed', // ink
@@ -190,8 +190,8 @@ const emmDarkPalette: ThemedPalette = {
   'primary-content': '#16181a', // 7.76:1 on #7fb79c; white is only 2.29:1,
   secondary: '#4b8569',
   accent: '#9c7fb7',
-  'radius-box': '1rem',
-  'radius-field': '0.75rem',
+  'radius-box': '.75rem',
+  'radius-field': '.625rem',
 };
 
 export const themes = [
