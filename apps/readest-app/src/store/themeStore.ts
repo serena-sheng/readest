@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { addPluginListener, type PluginListener } from '@tauri-apps/api/core';
 import { AppService } from '@/types/system';
 import { getThemeCode, ThemeCode } from '@/utils/style';
@@ -101,6 +102,10 @@ const LIBRARY_THEME_MODE_KEY = 'libraryThemeMode';
 const LIBRARY_THEME_COLOR_KEY = 'libraryThemeColor';
 
 const getInitialThemeMode = (): ThemeMode => {
+  // Local build: the Common Reader look is a light, warm paper. A dark system
+  // appearance would otherwise flip the whole reader to emm-dark, which is not
+  // what this build is for. LOCAL_UNLOCK pins light; upstream keeps auto.
+  if (LOCAL_UNLOCK) return 'light';
   if (typeof window !== 'undefined' && localStorage) {
     const stored = localStorage.getItem('themeMode');
     if (isValidThemeMode(stored)) return stored;
