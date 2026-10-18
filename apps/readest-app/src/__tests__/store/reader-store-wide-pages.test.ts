@@ -47,7 +47,10 @@ vi.mock('@/utils/book', () => ({
   getPrimaryLanguage: vi.fn(() => 'en'),
 }));
 vi.mock('@/utils/path', () => ({ getBaseFilename: vi.fn((n: string) => n) }));
-vi.mock('@/services/constants', () => ({ SUPPORTED_LANGNAMES: {} }));
+vi.mock('@/services/constants', () => ({
+  SUPPORTED_LANGNAMES: {},
+  DEFAULT_FIXED_LAYOUT_VIEW_SETTINGS: {},
+}));
 vi.mock('@/libs/document', () => ({ DocumentLoader: vi.fn() }));
 vi.mock('@/services/opds/pseStream', () => ({
   isPseStreamFileName: () => false,

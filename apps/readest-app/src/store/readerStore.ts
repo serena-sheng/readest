@@ -30,7 +30,8 @@ import {
   parseSeriesPosition,
 } from '@/utils/book';
 import { getBaseFilename } from '@/utils/path';
-import { SUPPORTED_LANGNAMES } from '@/services/constants';
+import { DEFAULT_FIXED_LAYOUT_VIEW_SETTINGS, SUPPORTED_LANGNAMES } from '@/services/constants';
+import { getComicViewDefaults, hasViewSettingOverrides, isComicFormat } from '@/utils/comic';
 import { useSettingsStore } from './settingsStore';
 import { BookData, useBookDataStore } from './bookDataStore';
 import { useLibraryStore } from './libraryStore';
@@ -368,6 +369,24 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
           [id]: newBookData,
         },
       }));
+      // A comic opened for the first time should page like a comic (single
+      // page, fit page, the direction the book declares) rather than inherit
+      // the text layout's two-column spread. Apply the defaults only while the
+      // book still has no per-book view override: `loadBookConfig` merges the
+      // global baseline into the stored config and `serializeConfig` drops
+      // anything equal to it, so a differing value is a real user choice.
+      const bookFormat = docFormat ?? book.format;
+      if (isComicFormat(bookFormat) && config.viewSettings) {
+        // Mirror `loadBookConfig`, which builds the baseline from the library
+        // record's format (not the loader's), so the comparison is exact.
+        const baselineViewSettings = {
+          ...settings.globalViewSettings,
+          ...(FIXED_LAYOUT_FORMATS.has(book.format) ? DEFAULT_FIXED_LAYOUT_VIEW_SETTINGS : {}),
+        };
+        if (!hasViewSettingOverrides(config.viewSettings, baselineViewSettings)) {
+          Object.assign(config.viewSettings, getComicViewDefaults(bookDoc.dir));
+        }
+      }
       const configViewSettings = config.viewSettings!;
       const globalViewSettings = settings.globalViewSettings;
       set((state) => ({

@@ -8,11 +8,15 @@ import { useEnv } from '@/context/EnvContext';
 import { useReaderStore } from '@/store/readerStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useThemeStore } from '@/store/themeStore';
+import { useBookDataStore } from '@/store/bookDataStore';
 import { saveViewSettings } from '@/helpers/settings';
 import { getMaxInlineSize } from '@/utils/config';
 import { getStyles } from '@/utils/style';
 import { getBookDirFromWritingMode } from '@/utils/book';
 import { getOSPlatform } from '@/utils/misc';
+import { getScrollGapAttr } from '@/utils/webtoon';
+import { isComicFormat } from '@/utils/comic';
+import { applyPageTurnAttributes } from '@/app/reader/hooks/useCapturedTurn';
 import {
   CJK_SANS_SERIF_FONTS,
   CJK_SERIF_FONTS,
@@ -172,6 +176,8 @@ const TypesetPanel: React.FC<TypesetPanelProps> = ({ bookKey, title, open, onClo
   const { envConfig } = useEnv();
   const { settings } = useSettingsStore();
   const { getView, getViewSettings, recreateViewer } = useReaderStore();
+  const bookData = useBookDataStore((state) => state.getBookData(bookKey));
+  const isComic = isComicFormat(bookData?.book?.format ?? bookData?.docFormat);
   const themeColor = useThemeStore((state) => state.themeColor);
   const themeMode = useThemeStore((state) => state.themeMode);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
@@ -193,6 +199,17 @@ const TypesetPanel: React.FC<TypesetPanelProps> = ({ bookKey, title, open, onClo
   const [columns, setColumns] = useState<1 | 2>(viewSettings.maxColumnCount > 1 ? 2 : 1);
   const [writingMode, setWritingMode] = useState<'horizontal-tb' | 'vertical-rl'>(
     viewSettings.writingMode === 'vertical-rl' ? 'vertical-rl' : 'horizontal-tb',
+  );
+  const [mangaMode, setMangaMode] = useState<'single' | 'webtoon'>(
+    viewSettings.webtoonMode ? 'webtoon' : 'single',
+  );
+  const [doublePage, setDoublePage] = useState(viewSettings.spreadMode !== 'none');
+  const [pageDirection, setPageDirection] = useState<'ltr' | 'rtl'>(
+    viewSettings.writingMode === 'horizontal-rl' ||
+      viewSettings.writingMode === 'vertical-rl' ||
+      (viewSettings.writingMode === 'auto' && bookData?.bookDoc?.dir === 'rtl')
+      ? 'rtl'
+      : 'ltr',
   );
 
   const systemFonts = useMemo(() => {
@@ -230,6 +247,15 @@ const TypesetPanel: React.FC<TypesetPanelProps> = ({ bookKey, title, open, onClo
     setFontFamily(latest.defaultFont === 'Sans-serif' ? latest.sansSerifFont : latest.serifFont);
     setColumns(latest.maxColumnCount > 1 ? 2 : 1);
     setWritingMode(latest.writingMode === 'vertical-rl' ? 'vertical-rl' : 'horizontal-tb');
+    setMangaMode(latest.webtoonMode ? 'webtoon' : 'single');
+    setDoublePage(latest.spreadMode !== 'none');
+    setPageDirection(
+      latest.writingMode === 'horizontal-rl' ||
+        latest.writingMode === 'vertical-rl' ||
+        (latest.writingMode === 'auto' && bookData?.bookDoc?.dir === 'rtl')
+        ? 'rtl'
+        : 'ltr',
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, bookKey]);
 
@@ -324,6 +350,73 @@ const TypesetPanel: React.FC<TypesetPanelProps> = ({ bookKey, title, open, onClo
         view.book.dir = getBookDirFromWritingMode(next);
       }
       if (previous !== next) recreateViewer(envConfig, bookKey);
+    });
+  };
+
+  const applyMangaMode = (mode: 'single' | 'webtoon') => {
+    if (mode === mangaMode) return;
+    setMangaMode(mode);
+    const webtoon = mode === 'webtoon';
+    const spreadMode = doublePage ? 'auto' : 'none';
+    const latest = getViewSettings(bookKey);
+    const view = getView(bookKey);
+
+    // One write per field: each call updates the shared viewSettings object
+    // synchronously before it persists, so the last write carries them all.
+    // Comic mode is inherently per-book, so every write skips the global
+    // settings instead of changing what other books open with.
+    void saveViewSettings(envConfig, bookKey, 'webtoonMode', webtoon, true, false);
+    void saveViewSettings(envConfig, bookKey, 'scrolled', webtoon, true, false);
+    if (webtoon) {
+      if (latest?.scrolledDirection !== 'vertical') {
+        void saveViewSettings(envConfig, bookKey, 'scrolledDirection', 'vertical', true, false);
+      }
+      if (latest?.zoomLevel !== 100) {
+        void saveViewSettings(envConfig, bookKey, 'zoomLevel', 100, true, false);
+      }
+    } else {
+      void saveViewSettings(envConfig, bookKey, 'spreadMode', spreadMode, true, false);
+    }
+
+    if (latest && view) {
+      view.renderer.setAttribute('flow', webtoon ? 'scrolled' : 'paginated');
+      view.renderer.setAttribute('scroll-gap', getScrollGapAttr(webtoon));
+      view.renderer.setAttribute(
+        'scroll-direction',
+        webtoon ? 'vertical' : (latest.scrolledDirection ?? 'vertical'),
+      );
+      view.renderer.setAttribute('max-inline-size', `${getMaxInlineSize(latest)}px`);
+      if (bookData?.isFixedLayout) {
+        view.renderer.setAttribute('spread', latest.spreadMode);
+      } else {
+        view.renderer.setAttribute('max-column-count', latest.maxColumnCount);
+      }
+      view.renderer.setStyles?.(getStyles(latest));
+      applyPageTurnAttributes(view, latest, !!bookData?.isFixedLayout);
+    }
+  };
+
+  const applyDoublePage = (next: boolean) => {
+    if (next === doublePage) return;
+    setDoublePage(next);
+    const spreadMode = next ? 'auto' : 'none';
+    void saveViewSettings(envConfig, bookKey, 'spreadMode', spreadMode, true, false);
+    getView(bookKey)?.renderer.setAttribute('spread', spreadMode);
+  };
+
+  const applyPageDirection = (direction: 'ltr' | 'rtl') => {
+    if (direction === pageDirection) return;
+    setPageDirection(direction);
+    // Page progression is the writing mode's horizontal axis: `horizontal-rl`
+    // flips both the spread order and `book.dir`, which is what the View
+    // menu's Right-to-Left Pages row writes.
+    const nextWritingMode = direction === 'rtl' ? 'horizontal-rl' : 'horizontal-tb';
+    const latest = getViewSettings(bookKey);
+    if (latest) latest.vertical = false;
+    void saveViewSettings(envConfig, bookKey, 'writingMode', nextWritingMode, true).then(() => {
+      const view = getView(bookKey);
+      if (view) view.book.dir = direction;
+      recreateViewer(envConfig, bookKey);
     });
   };
 
@@ -545,6 +638,56 @@ const TypesetPanel: React.FC<TypesetPanelProps> = ({ bookKey, title, open, onClo
                 <p className='mt-2 text-xs leading-relaxed opacity-60'>
                   切换横排 / 竖排会重新载入当前书籍。
                 </p>
+              </section>
+
+              <section>
+                <h3 className='mb-2 text-sm font-medium'>漫画</h3>
+                {isComic ? (
+                  <div className='space-y-3'>
+                    <div>
+                      <span className='mb-1 block text-xs opacity-60'>阅读模式</span>
+                      <Segmented
+                        label='漫画模式'
+                        selected={mangaMode}
+                        options={[
+                          { value: 'single', label: '单页' },
+                          { value: 'webtoon', label: '条漫' },
+                        ]}
+                        onSelect={(value) =>
+                          applyMangaMode(value === 'webtoon' ? 'webtoon' : 'single')
+                        }
+                      />
+                    </div>
+                    <div>
+                      <span className='mb-1 block text-xs opacity-60'>阅读方向</span>
+                      <Segmented
+                        label='阅读方向'
+                        selected={pageDirection}
+                        options={[
+                          { value: 'ltr', label: '从左到右' },
+                          { value: 'rtl', label: '从右到左' },
+                        ]}
+                        onSelect={(value) => applyPageDirection(value === 'rtl' ? 'rtl' : 'ltr')}
+                      />
+                    </div>
+                    {mangaMode === 'single' && (
+                      <label className='flex items-center justify-between gap-2'>
+                        <span className='text-sm font-medium'>双页</span>
+                        <input
+                          type='checkbox'
+                          role='switch'
+                          aria-label='双页'
+                          aria-checked={doublePage}
+                          className='toggle toggle-sm'
+                          checked={doublePage}
+                          onChange={(event) => applyDoublePage(event.target.checked)}
+                        />
+                      </label>
+                    )}
+                  </div>
+                ) : (
+                  <p className='text-xs leading-relaxed opacity-60'>本书不支持漫画模式</p>
+                )}
               </section>
             </>
           )}
