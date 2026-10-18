@@ -1,6 +1,7 @@
 'use client';
 
 import '@/utils/polyfill';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import i18n from '@/i18n/i18n';
 import { useEffect, useState } from 'react';
 import { IconContext } from 'react-icons';
@@ -274,7 +275,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
                   <CommandPalette />
                   <AtmosphereOverlay />
                   <PassphrasePrompt />
-                  {!appShellHidden && <FileSyncReport />}
+                  {!appShellHidden && !LOCAL_UNLOCK && <FileSyncReport />}
                   <WindowResizeHandles />
                 </div>
                 <AppLockDialog />

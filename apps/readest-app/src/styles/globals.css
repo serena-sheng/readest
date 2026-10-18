@@ -1649,7 +1649,10 @@ html[data-theme^='emm'] .books-grid:not(:has(.foliate-viewer)) {
   padding: 18px 24px 24px;
 }
 
-html[data-theme^='emm'] .books-grid > [data-view-transition-root] {
+/* Only the reader grid hosts one full-page cell; in the library every book tile
+   carries the same attribute, so an unscoped rule would paint each book as a
+   card (and leave the hover tile looking like a stray panel). */
+html[data-theme^='emm'] .books-grid:has(.foliate-viewer) > [data-view-transition-root] {
   border-radius: var(--radius-box);
   background-color: var(--color-base-100);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
@@ -1658,7 +1661,7 @@ html[data-theme^='emm'] .books-grid > [data-view-transition-root] {
 /* HeaderBar sits on the card: no bar, no divider shadow. Its wrapper and the
    three bg-base-100 groups would otherwise paint an opaque square over the
    card's rounded top corners while the header is hovered. */
-html[data-theme^='emm'] .books-grid > [data-view-transition-root] > div:first-child,
+html[data-theme^='emm'] .books-grid:has(.foliate-viewer) > [data-view-transition-root] > div:first-child,
 html[data-theme^='emm'] .header-bar,
 html[data-theme^='emm'] .header-bar .header-tools-start,
 html[data-theme^='emm'] .header-bar .header-tools-end,
