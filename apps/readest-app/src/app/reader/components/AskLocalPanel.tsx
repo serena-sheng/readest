@@ -10,6 +10,13 @@ import type { AskSuggestion } from '@/services/ai/askLocal';
 interface AskLocalPanelProps {
   title: string;
   selection: string;
+  /**
+   * Selection captured by a surface that opens the panel directly (the
+   * reader's selection pill). When present it is the text the questions are
+   * asked against, so a caller that only knows the selection at open time can
+   * hand it over without keeping its own copy in `selection`.
+   */
+  initialSelection?: string;
   open: boolean;
   onClose: () => void;
 }
@@ -22,7 +29,16 @@ interface Turn {
 
 const MAX_TURNS = 5;
 
-const AskLocalPanel: React.FC<AskLocalPanelProps> = ({ title, selection, open, onClose }) => {
+const AskLocalPanel: React.FC<AskLocalPanelProps> = ({
+  title,
+  selection,
+  initialSelection,
+  open,
+  onClose,
+}) => {
+  // A surface that opens the panel carries the text it was opened for; the
+  // toggler keeps passing its snapshot through `selection` instead.
+  const context = (initialSelection ?? selection).trim();
   const [question, setQuestion] = useState('');
   const [turns, setTurns] = useState<Turn[]>([]);
   const [suggestions, setSuggestions] = useState<AskSuggestion[]>([]);
@@ -35,7 +51,7 @@ const AskLocalPanel: React.FC<AskLocalPanelProps> = ({ title, selection, open, o
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    suggestLocal({ text: selection, title })
+    suggestLocal({ text: context, title })
       .then((items) => {
         if (!cancelled) setSuggestions(items.slice(0, 3));
       })
@@ -45,7 +61,7 @@ const AskLocalPanel: React.FC<AskLocalPanelProps> = ({ title, selection, open, o
     return () => {
       cancelled = true;
     };
-  }, [open, selection, title]);
+  }, [open, context, title]);
 
   useEffect(() => {
     if (open) return;
@@ -78,7 +94,7 @@ const AskLocalPanel: React.FC<AskLocalPanelProps> = ({ title, selection, open, o
       try {
         await askLocal({
           question: prompt,
-          selection,
+          selection: context,
           title,
           signal: controller.signal,
           onDelta: (delta) => {
@@ -101,7 +117,7 @@ const AskLocalPanel: React.FC<AskLocalPanelProps> = ({ title, selection, open, o
         if (!controller.signal.aborted) setStreaming(false);
       }
     },
-    [selection, title, streaming],
+    [context, title, streaming],
   );
 
   return (
@@ -121,7 +137,7 @@ const AskLocalPanel: React.FC<AskLocalPanelProps> = ({ title, selection, open, o
           <h2 className='text-base font-semibold'>问一个问题</h2>
           <p className='mt-1 truncate text-xs opacity-60'>{title}</p>
           <p className='mt-1 line-clamp-2 text-xs opacity-70'>
-            {selection || '未选中文本，将基于当前页提问'}
+            {context || '未选中文本，将基于当前页提问'}
           </p>
         </div>
         <button

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { RiDeleteBinLine } from 'react-icons/ri';
 
 import * as CFI from 'foliate-js/epubcfi.js';
@@ -99,6 +100,8 @@ import DictionaryPopup from './DictionaryPopup';
 import DictionarySheet from './DictionarySheet';
 import NoteEditorSheet from './NoteEditorSheet';
 import TranslatorPopup from './TranslatorPopup';
+import SelectionActions from './SelectionActions';
+import AskLocalPanel from '../AskLocalPanel';
 import useShortcuts from '@/hooks/useShortcuts';
 import ProofreadPopup from './ProofreadPopup';
 import { setProofreadRulesVisibility } from '@/app/reader/components/ProofreadRules';
@@ -227,6 +230,10 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
     defaultFont: QuoteCardFont;
   } | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  // Text handed to the ask panel by the selection pill. The panel is mounted
+  // here (not inside the pill) so it survives the pill's dismissal: opening it
+  // clears the floating selection.
+  const [askLocalSelection, setAskLocalSelection] = useState<string | null>(null);
   const [importingAnnotations, setImportingAnnotations] = useState(false);
   // "Clear Annotations" confirm dialog. Hosted here (and not in BookMenu)
   // because the menu unmounts the moment the user picks the entry, which
@@ -2707,6 +2714,24 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
   const overlaySurfaceOpen =
     showDictionaryPopup || showDeepLPopup || showProofreadPopup || !!noteEditorTarget;
 
+  // The pill is fixed in the viewport while the reader toolbar is positioned in
+  // the book cell's space: offset by the cell's top so the pill can stack 8px
+  // above the toolbar instead of covering it.
+  const selectionActionsAvoidTop = useMemo(() => {
+    if (!showAnnotPopup || !annotPopupPosition || typeof document === 'undefined') return undefined;
+    const grid = document.querySelector(`#gridcell-${bookKey}`);
+    return grid ? grid.getBoundingClientRect().top + annotPopupPosition.point.y : undefined;
+  }, [showAnnotPopup, annotPopupPosition, bookKey]);
+
+  // One floating surface at a time: a lookup popup opened from the toolbar
+  // (translator included) owns the selection's space while it is up.
+  const selectionActionsVisible =
+    !!selection &&
+    selection.text.trim().length >= 2 &&
+    !showDictionaryPopup &&
+    !showDeepLPopup &&
+    !showProofreadPopup;
+
   // Below `sm` (or short landscape) the note editor is a bottom sheet rather
   // than a popup pinned to the selection: an anchored editor would sit under
   // the on-screen keyboard. Same heuristic the dictionary uses.
@@ -2831,6 +2856,34 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
           }}
         />
       )}
+      {selectionActionsVisible && selection && (
+        <SelectionActions
+          selection={selection}
+          bookTitle={bookData.book?.title ?? ''}
+          href={view?.book?.sections?.[selection.index]?.href}
+          avoidTop={selectionActionsAvoidTop}
+          onAsk={(text) => {
+            // The panel is owned outside the pill, so dismiss the selection
+            // (and with it the pill) only after the text has been handed over.
+            setAskLocalSelection(text);
+            eventDispatcher.dispatch('ask-local-close', { bookKey });
+            handleDismissPopupAndSelection();
+          }}
+          onDismiss={handleDismissPopupAndSelection}
+        />
+      )}
+      {askLocalSelection !== null &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <AskLocalPanel
+            title={bookData.book?.title ?? ''}
+            selection=''
+            initialSelection={askLocalSelection}
+            open
+            onClose={() => setAskLocalSelection(null)}
+          />,
+          document.body,
+        )}
       {!editingAnnotation &&
         !overlaySurfaceOpen &&
         selection?.handlesSuppressed &&

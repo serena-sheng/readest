@@ -8,6 +8,7 @@ import { useReaderStore } from '@/store/readerStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import Button from '@/components/Button';
+import { eventDispatcher } from '@/utils/event';
 import AskLocalPanel from './AskLocalPanel';
 
 interface AskLocalTogglerProps {
@@ -24,6 +25,16 @@ const AskLocalToggler: React.FC<AskLocalTogglerProps> = ({ bookKey, title }) => 
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  // The selection pill opens its own panel for the captured text. Close this
+  // one first so two panels never share the fixed drawer.
+  useEffect(() => {
+    const close = (event: CustomEvent) => {
+      if (event.detail?.bookKey === bookKey) setIsOpen(false);
+    };
+    eventDispatcher.on('ask-local-close', close);
+    return () => eventDispatcher.off('ask-local-close', close);
+  }, [bookKey]);
 
   const handleToggle = () => {
     if (!isOpen) {
