@@ -1907,3 +1907,67 @@ html[data-theme^='emm'] h2[data-shelf-id] {
   letter-spacing: 0.01em;
   color: color-mix(in srgb, var(--color-base-content) 82%, transparent);
 }
+
+/* emm library, second pass: the first selectors assumed an h4 directly under the
+   grid cell. The real markup is BookshelfItem > .bookitem-main (overflow hidden,
+   rounded-sm) > img.cover-image, with the title as `<h4 class="text-neutral-content
+   line-clamp-1 text-sm">` at whatever depth the item needs. Match by element, not
+   by ancestor chain. */
+html[data-theme^='emm'] .book-item h4,
+html[data-theme^='emm'] .group-item h4 {
+  font-family: 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti TC', serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--color-base-content) 82%, transparent);
+}
+
+html[data-theme^='emm'] .book-item img.cover-image {
+  border-radius: 4px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+html[data-theme^='emm'] .book-item .bookitem-main {
+  overflow: visible;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html[data-theme^='emm'] .book-item .bookitem-main {
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  html[data-theme^='emm'] .book-item:hover .bookitem-main {
+    transform: translateY(-4px);
+  }
+  html[data-theme^='emm'] .book-item:hover img.cover-image {
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme^='emm'] .book-item .bookitem-main {
+    transition: none;
+  }
+  html[data-theme^='emm'] .book-item:hover .bookitem-main {
+    transform: none;
+  }
+}
+
+/* emm library, third pass: match by class substring so a renamed ancestor chain
+   cannot silently drop the rule (the first two passes both missed). */
+html[data-theme^='emm'] [class*='bookshelf-items'] h4 {
+  font-family: 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', serif !important;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-base-content) 82%, transparent);
+}
+
+html[data-theme^='emm'] img[class*='cover-image'] {
+  border-radius: 4px !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16) !important;
+}
+
+html[data-theme^='emm'] [class*='bookitem-main'] {
+  overflow: visible !important;
+}
