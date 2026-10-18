@@ -4,6 +4,7 @@ import { createCustomTranslator } from '../custom';
 import { deeplProvider } from './deepl';
 import { azureProvider } from './azure';
 import { googleProvider } from './google';
+import { emmProvider } from './emm';
 import { yandexProvider } from './yandex';
 
 function createTranslator<T extends string>(
@@ -22,12 +23,14 @@ const deeplTranslator = createTranslator('deepl', deeplProvider);
 const azureTranslator = createTranslator('azure', azureProvider);
 const googleTranslator = createTranslator('google', googleProvider);
 const yandexTranslator = createTranslator('yandex', yandexProvider);
+const emmTranslator = createTranslator('emm', emmProvider);
 
 const availableTranslators = [
   deeplTranslator,
   azureTranslator,
   googleTranslator,
   yandexTranslator,
+  emmTranslator,
   // Add more translators here
 ];
 
