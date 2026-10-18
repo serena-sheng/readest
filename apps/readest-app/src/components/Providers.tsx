@@ -275,7 +275,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
                   <CommandPalette />
                   <AtmosphereOverlay />
                   <PassphrasePrompt />
-                  {!appShellHidden && !LOCAL_UNLOCK && <FileSyncReport />}
+                  {!appShellHidden && <FileSyncReport />}
                   <WindowResizeHandles />
                 </div>
                 <AppLockDialog />
