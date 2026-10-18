@@ -1627,6 +1627,20 @@ html[data-theme^='emm'] .books-grid {
   background-color: var(--color-base-200);
 }
 
+/* Cover-tinted ambience. `useCoverAmbient` samples the open book's cover and
+   publishes its mean colour as `--emm-ambient` on `.reader-page`; here it is a
+   12% wash fading out below the top edge, so the canvas stays a neutral warm
+   tone rather than turning into a coloured block. When no cover could be
+   sampled the variable is unset and `transparent` makes the gradient a no-op. */
+html[data-theme^='emm'] .reader-page,
+html[data-theme^='emm'] .books-grid {
+  background-image: radial-gradient(
+    120% 90% at 50% 0%,
+    color-mix(in srgb, var(--emm-ambient, transparent) 12%, transparent),
+    transparent 70%
+  );
+}
+
 html[data-theme^='emm'] .books-grid {
   padding: 18px 24px 24px;
 }
@@ -1684,4 +1698,47 @@ html[data-theme^='emm'] .sectioninfo:not(.writing-vertical-rl) > span {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--color-base-content) 55%, transparent);
+}
+
+/*
+ * emm sidebar — a floating rail.
+ *
+ * `.sidebar-container` is the only sidebar shell (reader-only); it keeps its
+ * position/drag logic and only its paint changes: translucent canvas, a
+ * backdrop blur so the page reads through it, box radius, a soft shadow and
+ * 12px of breathing room on every side. Height compensates for the vertical
+ * margins so a pinned rail does not overflow the flex row. Mobile keeps the
+ * full-width sheet (`@media` guard): margin on a fixed 100%-wide panel would
+ * push it past the viewport.
+ */
+@media (min-width: 640px) {
+  html[data-theme^='emm'] .sidebar-container {
+    height: calc(100% - 24px);
+    margin: 12px;
+    border-radius: var(--radius-box);
+    background-color: color-mix(in srgb, var(--color-base-200) 72%, transparent);
+    backdrop-filter: blur(18px) saturate(1.08);
+    -webkit-backdrop-filter: blur(18px) saturate(1.08);
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.1),
+      0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  /* The rail is one surface: the content column's inner shadow and the tab
+     strip's opaque fill would break the single-pane read. */
+  html[data-theme^='emm'] .sidebar-container .sidebar-content {
+    box-shadow: none;
+  }
+
+  html[data-theme^='emm'] .sidebar-container .bottom-tab {
+    border-top-color: color-mix(in srgb, var(--color-base-content) 7%, transparent);
+    background-color: transparent;
+  }
+}
+
+/* Toolbar and tab hover: 12% of the theme accent, matching the prototype's
+   primary tint rather than daisyUI's neutral grey. */
+html[data-theme^='emm'] .sidebar-container .btn:hover,
+html[data-theme^='emm'] .sidebar-container .bottom-tab > div[role='button']:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }

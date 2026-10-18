@@ -45,6 +45,7 @@ import { writeTextToClipboard } from '@/utils/clipboard';
 
 import useBooksManager from '../hooks/useBooksManager';
 import useBookShortcuts from '../hooks/useBookShortcuts';
+import { useCoverAmbient } from '../hooks/useCoverAmbient';
 import Spinner from '@/components/Spinner';
 import SideBar from './sidebar/SideBar';
 import Notebook from './notebook/Notebook';
@@ -439,6 +440,11 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
       }
     });
   };
+
+  // The first open book tints the emm canvas; the hook caches per bookKey and
+  // clears the variable when it cannot sample a cover.
+  const ambientBookKey = bookKeys?.[0];
+  useCoverAmbient(ambientBookKey, ambientBookKey ? getBookData(ambientBookKey)?.book : undefined);
 
   if (!bookKeys || bookKeys.length === 0) return null;
   const bookData = getBookData(bookKeys[0]!);
