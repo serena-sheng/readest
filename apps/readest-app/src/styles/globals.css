@@ -1742,3 +1742,13 @@ html[data-theme^='emm'] .sidebar-container .btn:hover,
 html[data-theme^='emm'] .sidebar-container .bottom-tab > div[role='button']:hover {
   background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
+
+/* emm: the prototype has a clean canvas — neutralize any user background texture */
+html[data-theme^='emm'] body::before,
+html[data-theme^='emm'] .foliate-viewer::before,
+html[data-theme^='emm'] .sidebar-container::before,
+html[data-theme^='emm'] .notebook-container::before,
+html[data-theme^='emm'] .notch-masked::before {
+  background-image: none !important;
+  opacity: 0 !important;
+}
