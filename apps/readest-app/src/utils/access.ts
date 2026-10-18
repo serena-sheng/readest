@@ -9,6 +9,7 @@ import {
 import { isWebAppPlatform } from '@/services/environment';
 import { getDailyUsage } from '@/services/translators/utils';
 import { getRuntimeConfig } from '@/services/runtimeConfig';
+import { LOCAL_PLAN, LOCAL_UNLOCK } from '@/utils/localUnlock';
 
 interface Token {
   plan: UserPlan;
@@ -19,11 +20,13 @@ interface Token {
 }
 
 export const getSubscriptionPlan = (token: string): UserPlan => {
+  if (LOCAL_UNLOCK) return LOCAL_PLAN;
   const data = jwtDecode<Token>(token) || {};
   return data['plan'] || 'free';
 };
 
 export const getUserProfilePlan = (token: string): UserPlan => {
+  if (LOCAL_UNLOCK) return LOCAL_PLAN;
   const data = jwtDecode<Token>(token) || {};
   let plan = data['plan'] || 'free';
   if (plan === 'free') {
@@ -48,7 +51,7 @@ export const getUserProfilePlan = (token: string): UserPlan => {
 export const EMAIL_IN_PLANS: readonly UserPlan[] = ['plus', 'pro', 'purchase'];
 
 export const isEmailInPlan = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  isCustomizationAllowed(plan, customizationPurchased);
+  LOCAL_UNLOCK || isCustomizationAllowed(plan, customizationPurchased);
 
 /**
  * Plans that include third-party cloud sync (WebDAV / Google Drive): any paid
@@ -59,7 +62,7 @@ export const isEmailInPlan = (plan: UserPlan, customizationPurchased: boolean): 
 export const CLOUD_SYNC_PLANS: readonly UserPlan[] = ['plus', 'pro', 'purchase'];
 
 export const isCloudSyncInPlan = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  isCustomizationAllowed(plan, customizationPurchased);
+  LOCAL_UNLOCK || isCustomizationAllowed(plan, customizationPurchased);
 
 /**
  * Master switch for the third-party cloud-sync premium paywall. ON: cloud
@@ -70,7 +73,7 @@ export const isCloudSyncInPlan = (plan: UserPlan, customizationPurchased: boolea
  * Every gate goes through {@link isCloudSyncAllowed}, so this flag is the
  * whole toggle.
  */
-export const CLOUD_SYNC_REQUIRES_PREMIUM = true;
+export const CLOUD_SYNC_REQUIRES_PREMIUM = !LOCAL_UNLOCK;
 
 /**
  * Whether third-party cloud sync is available for a plan. Falls back to the
@@ -78,7 +81,7 @@ export const CLOUD_SYNC_REQUIRES_PREMIUM = true;
  * is on; flipping the switch off ungates every plan.
  */
 export const isCloudSyncAllowed = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  !CLOUD_SYNC_REQUIRES_PREMIUM || isCloudSyncInPlan(plan, customizationPurchased);
+  LOCAL_UNLOCK || !CLOUD_SYNC_REQUIRES_PREMIUM || isCloudSyncInPlan(plan, customizationPurchased);
 
 /**
  * Plans that include the offline TTS audio cache — pre-downloading a book's
@@ -89,7 +92,7 @@ export const isCloudSyncAllowed = (plan: UserPlan, customizationPurchased: boole
 export const TTS_CACHE_PLANS: readonly UserPlan[] = ['plus', 'pro', 'purchase'];
 
 export const isTTSCacheInPlan = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  isCustomizationAllowed(plan, customizationPurchased);
+  LOCAL_UNLOCK || isCustomizationAllowed(plan, customizationPurchased);
 
 /**
  * Master switch for the offline-audio premium paywall, mirroring
@@ -98,10 +101,10 @@ export const isTTSCacheInPlan = (plan: UserPlan, customizationPurchased: boolean
  * automatic playback cache (audio kept as the user listens) is unaffected —
  * only the explicit download UI is gated.
  */
-export const TTS_CACHE_REQUIRES_PREMIUM = true;
+export const TTS_CACHE_REQUIRES_PREMIUM = !LOCAL_UNLOCK;
 
 export const isTTSCacheAllowed = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  !TTS_CACHE_REQUIRES_PREMIUM || isTTSCacheInPlan(plan, customizationPurchased);
+  LOCAL_UNLOCK || !TTS_CACHE_REQUIRES_PREMIUM || isTTSCacheInPlan(plan, customizationPurchased);
 
 /**
  * Offline Audiobookshelf downloads — storing an ABS audiobook's tracks or an
@@ -111,16 +114,16 @@ export const isTTSCacheAllowed = (plan: UserPlan, customizationPurchased: boolea
  * free. Client-side gate, like the TTS cache.
  */
 export const isAbsOfflineInPlan = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  isCustomizationAllowed(plan, customizationPurchased);
+  LOCAL_UNLOCK || isCustomizationAllowed(plan, customizationPurchased);
 
 /**
  * Master switch for the offline-download paywall, mirroring
  * {@link TTS_CACHE_REQUIRES_PREMIUM}. Flipping it off ungates every plan.
  */
-export const ABS_OFFLINE_REQUIRES_PREMIUM = true;
+export const ABS_OFFLINE_REQUIRES_PREMIUM = !LOCAL_UNLOCK;
 
 export const isAbsOfflineAllowed = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  !ABS_OFFLINE_REQUIRES_PREMIUM || isAbsOfflineInPlan(plan, customizationPurchased);
+  LOCAL_UNLOCK || !ABS_OFFLINE_REQUIRES_PREMIUM || isAbsOfflineInPlan(plan, customizationPurchased);
 
 /**
  * Plans that include Nearby BookDrop device pairing — trusted devices whose
@@ -133,7 +136,7 @@ export const isAbsOfflineAllowed = (plan: UserPlan, customizationPurchased: bool
 export const NEARBY_PAIRING_PLANS: readonly UserPlan[] = ['plus', 'pro', 'purchase'];
 
 export const isNearbyPairingInPlan = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  isCustomizationAllowed(plan, customizationPurchased);
+  LOCAL_UNLOCK || isCustomizationAllowed(plan, customizationPurchased);
 
 /**
  * Master switch for the pairing paywall, mirroring
@@ -142,10 +145,12 @@ export const isNearbyPairingInPlan = (plan: UserPlan, customizationPurchased: bo
  * Flipping it off ungates every plan. Existing pairing records always
  * persist; only the auto-accept behavior is gated.
  */
-export const NEARBY_PAIRING_REQUIRES_PREMIUM = true;
+export const NEARBY_PAIRING_REQUIRES_PREMIUM = !LOCAL_UNLOCK;
 
 export const isNearbyPairingAllowed = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  !NEARBY_PAIRING_REQUIRES_PREMIUM || isNearbyPairingInPlan(plan, customizationPurchased);
+  LOCAL_UNLOCK ||
+  !NEARBY_PAIRING_REQUIRES_PREMIUM ||
+  isNearbyPairingInPlan(plan, customizationPurchased);
 
 /**
  * Whether the account has bought the Full Customization unlock, as minted into
@@ -153,6 +158,7 @@ export const isNearbyPairingAllowed = (plan: UserPlan, customizationPurchased: b
  * before the claim existed, which reads as not purchased.
  */
 export const getCustomizationPurchased = (token: string): boolean => {
+  if (LOCAL_UNLOCK) return true;
   const data = jwtDecode<Token>(token) || {};
   return data['customization_purchased'] === true;
 };
@@ -185,7 +191,7 @@ export const isSelfHosted = (): boolean =>
  * subscription, or the Full Customization unlock bought outright.
  */
 export const isCustomizationAllowed = (plan: UserPlan, customizationPurchased: boolean): boolean =>
-  isSelfHosted() || customizationPurchased || PREMIUM_PLANS.includes(plan);
+  LOCAL_UNLOCK || isSelfHosted() || customizationPurchased || PREMIUM_PLANS.includes(plan);
 
 /**
  * Custom translators (the user's own OpenAI-compatible LLM or DeepL key) are a
@@ -194,9 +200,10 @@ export const isCustomizationAllowed = (plan: UserPlan, customizationPurchased: b
  * a reader window never sees a premium user as free while the plan loads.
  */
 export const isCustomTranslatorAllowed = (token: string | null | undefined): boolean =>
-  token
+  LOCAL_UNLOCK ||
+  (token
     ? isCustomizationAllowed(getUserProfilePlan(token), getCustomizationPurchased(token))
-    : isSelfHosted();
+    : isSelfHosted());
 
 /**
  * Custom TTS services (the user's own OpenAI-compatible speech endpoint) are
@@ -216,16 +223,17 @@ export const getStoragePlanData = (token: string) => {
   const fixedQuota =
     runtimeConfig?.storageFixedQuota ?? parseInt(process.env['STORAGE_FIXED_QUOTA'] ?? '0');
   const planQuota = fixedQuota || DEFAULT_STORAGE_QUOTA[plan] || DEFAULT_STORAGE_QUOTA['free'];
-  const quota = planQuota + purchasedQuota;
+  const quota = LOCAL_UNLOCK ? Number.MAX_SAFE_INTEGER : planQuota + purchasedQuota;
 
   return {
-    plan,
+    plan: LOCAL_UNLOCK ? LOCAL_PLAN : plan,
     usage,
     quota,
   };
 };
 
 export const getTranslationQuota = (plan: UserPlan): number => {
+  if (LOCAL_UNLOCK) return Number.MAX_SAFE_INTEGER;
   const runtimeConfig = getRuntimeConfig();
   const fixedQuota =
     runtimeConfig?.translationFixedQuota ?? parseInt(process.env['TRANSLATION_FIXED_QUOTA'] ?? '0');
@@ -242,13 +250,14 @@ export const getTranslationQuota = (plan: UserPlan): number => {
  */
 export const TTS_PLANS: readonly UserPlan[] = ['plus', 'pro'];
 
-export const isTTSInPlan = (plan: UserPlan): boolean => TTS_PLANS.includes(plan);
+export const isTTSInPlan = (plan: UserPlan): boolean => LOCAL_UNLOCK || TTS_PLANS.includes(plan);
 
 /** A Readest Voice tier: Plus unlocks its voices, Pro unlocks both tiers. */
 export const isVoiceTierInPlan = (tier: 'plus' | 'pro', plan: UserPlan): boolean =>
-  tier === 'plus' ? isTTSInPlan(plan) : plan === 'pro';
+  LOCAL_UNLOCK || (tier === 'plus' ? isTTSInPlan(plan) : plan === 'pro');
 
 export const getTTSQuota = (plan: UserPlan): number => {
+  if (LOCAL_UNLOCK) return Number.MAX_SAFE_INTEGER;
   const fixedQuota = parseInt(process.env['TTS_FIXED_QUOTA'] ?? '0');
   return fixedQuota || DEFAULT_DAILY_TTS_QUOTA[plan] || 0;
 };

@@ -40,7 +40,10 @@ const planCard = (name: string) => screen.getByText(name).closest('div.bg-base-1
 
 afterEach(cleanup);
 
-describe('PlansComparison', () => {
+// Local unlock build (`utils/localUnlock.ts`): PlansComparison renders nothing,
+// so the upstream storefront assertions no longer apply. Skipped, not deleted,
+// so the file stays easy to reconcile with upstream.
+describe.skip('PlansComparison', () => {
   it('hides the interval toggle until the store offers a yearly price', () => {
     render(<PlansComparison availablePlans={MONTHLY_ONLY} userPlan='free' onSubscribe={vi.fn()} />);
 

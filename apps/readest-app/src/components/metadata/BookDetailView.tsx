@@ -15,6 +15,7 @@ import { Book } from '@/types/book';
 import { BookMetadata } from '@/libs/document';
 import { openExternalUrl } from '@/utils/open';
 import { sanitizeHtml } from '@/utils/sanitize';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { getBookGoodreadsQuery, getGoodreadsSearchUrl } from '@/utils/goodreads';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -173,7 +174,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
                 className='flex items-center gap-1'
               >
                 <MdOutlineDownloadForOffline className='fill-base-content' />
-                {offlinePremiumLabel && (
+                {!LOCAL_UNLOCK && offlinePremiumLabel && (
                   <span className='badge badge-sm badge-ghost'>{offlinePremiumLabel}</span>
                 )}
               </button>

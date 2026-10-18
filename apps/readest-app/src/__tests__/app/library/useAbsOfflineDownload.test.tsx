@@ -49,7 +49,9 @@ describe('useAbsOfflineDownload', () => {
     expect(queueAbsOfflineDownload).toHaveBeenCalledWith(book, 1);
   });
 
-  it('routes a free user to the upgrade page', () => {
+  // Local unlock build (`utils/localUnlock.ts`): offline ABS downloads are open
+  // to every plan, so the upstream upgrade/sign-in routing no longer applies.
+  it.skip('routes a free user to the upgrade page', () => {
     const { result } = renderHook(() => useAbsOfflineDownload());
 
     expect(result.current.offlinePremiumLabel).toBe('Premium');
@@ -59,7 +61,7 @@ describe('useAbsOfflineDownload', () => {
     expect(navigateToProfile).toHaveBeenCalled();
   });
 
-  it('routes a signed-out user to sign in', () => {
+  it.skip('routes a signed-out user to sign in', () => {
     state.user = null;
     state.plan = undefined;
     const { result } = renderHook(() => useAbsOfflineDownload());
@@ -82,7 +84,7 @@ describe('useAbsOfflineDownload', () => {
     expect(queueAbsOfflineDownload).toHaveBeenCalledWith(other, 1);
   });
 
-  it('routes a free user to the upgrade page once for a bulk download', () => {
+  it.skip('routes a free user to the upgrade page once for a bulk download', () => {
     const { result } = renderHook(() => useAbsOfflineDownload());
 
     result.current.handleBooksOfflineDownload([book, { ...book, hash: 'h2' }]);

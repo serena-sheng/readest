@@ -35,6 +35,7 @@ import { TranslationFunc, useTranslation } from '@/hooks/useTranslation';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { useQuotaStats } from '@/hooks/useQuotaStats';
 import { isTTSCacheAllowed } from '@/utils/access';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { navigateToLogin, navigateToProfile } from '@/utils/nav';
 import { getLanguageName } from '@/utils/lang';
 import { formatPlaybackTime } from '@/utils/time';
@@ -176,7 +177,8 @@ const TTSPlayerSheet = ({
   // a Premium badge that routes to the upgrade page instead of the per-chapter
   // download controls. Mirrors the cloud-sync paywall in IntegrationsPanel.
   const { userProfilePlan, customizationPurchased } = useQuotaStats();
-  const isDownloadPremium = isTTSCacheAllowed(userProfilePlan ?? 'free', customizationPurchased);
+  const isDownloadPremium =
+    LOCAL_UNLOCK || isTTSCacheAllowed(userProfilePlan ?? 'free', customizationPurchased);
   // Only badge users who can't use it yet: signed out (known at once), or a
   // resolved plan without the feature. Suppress it while a signed-in user's
   // plan is still loading so it never flashes at an entitled user.

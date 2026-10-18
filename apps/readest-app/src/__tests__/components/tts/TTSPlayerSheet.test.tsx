@@ -641,7 +641,9 @@ describe('TTSPlayerSheet', () => {
     expect(routerPush).not.toHaveBeenCalled();
   });
 
-  test('offline audio row: a free user sees a Premium badge and is routed to upgrade', () => {
+  // Local unlock build (`utils/localUnlock.ts`): offline audio is open to every
+  // plan, so the upstream free-user badge and upgrade routing no longer apply.
+  test.skip('offline audio row: a free user sees a Premium badge and is routed to upgrade', () => {
     mockQuota.userProfilePlan = 'free';
     const props = makeProps({ downloads: makeDownloads() });
     render(<TTSPlayerSheet {...props} />);
@@ -654,7 +656,7 @@ describe('TTSPlayerSheet', () => {
     expect(screen.queryByText('chapters-view')).toBeNull();
   });
 
-  test('offline audio row: a signed-out user is routed to sign-in', () => {
+  test.skip('offline audio row: a signed-out user is routed to sign-in', () => {
     mockAuth.user = null;
     mockQuota.userProfilePlan = undefined;
     const props = makeProps({ downloads: makeDownloads() });

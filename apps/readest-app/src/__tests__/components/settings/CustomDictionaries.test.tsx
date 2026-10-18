@@ -274,7 +274,9 @@ describe('CustomDictionaries — context dictionary (#5544)', () => {
     expect(screen.queryByRole('combobox', { name: 'AI Translator' })).toBeNull();
   });
 
-  it('cannot be enabled without premium', () => {
+  // Local unlock build (`utils/localUnlock.ts`): context dictionaries are
+  // unlocked for every account, so this premium lock no longer applies.
+  it.skip('cannot be enabled without premium', () => {
     platform.premium = false;
     useCustomTranslatorStore.setState({ translators: [llm('a')], loaded: true });
     seedSettings(contextSettings);

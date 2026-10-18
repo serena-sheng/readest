@@ -6,6 +6,7 @@ import { getPlanAccent, PlanDetails } from '../utils/plan';
 import { PlanInterval, PlanType } from '@/types/quota';
 import PlanActionButton from './PlanActionButton';
 import PurchaseCallToActions from './PurchaseCallToActions';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 
 interface PlanCardProps {
   plan: PlanDetails;
@@ -30,6 +31,9 @@ const PlanCard: React.FC<PlanCardProps> = ({
   onSubscribe,
 }) => {
   const _ = useTranslation();
+  // Local unlock build: every feature is already available, so no plan card
+  // (prices, purchase CTAs) should ever render.
+  if (LOCAL_UNLOCK) return null;
   const { price, currency } = plan;
   const accent = getPlanAccent(plan.plan);
 

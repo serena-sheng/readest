@@ -302,7 +302,9 @@ describe('BookDetailView offline Audiobookshelf download (#6256)', () => {
       ...overrides,
     });
 
-  it('offers the download with a Premium badge for users who need to upgrade', () => {
+  // Local unlock build (`utils/localUnlock.ts`): the Premium label is
+  // suppressed, so this upstream gate expectation no longer applies.
+  it.skip('offers the download with a Premium badge for users who need to upgrade', () => {
     const onDownloadOffline = vi.fn();
     const { getByRole, getByText } = renderView({
       book: absBook(),

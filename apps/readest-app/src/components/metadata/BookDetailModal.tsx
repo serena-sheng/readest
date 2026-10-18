@@ -12,6 +12,7 @@ import { useMetadataEdit } from './useMetadataEdit';
 import { DeleteAction } from '@/types/system';
 import { eventDispatcher } from '@/utils/event';
 import { isAbsOfflineCapable } from '@/utils/audiobook';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { isWebAppPlatform } from '@/services/environment';
 import DeleteConfirmAlert from '@/components/DeleteConfirmAlert';
 import Dialog from '@/components/Dialog';
@@ -299,7 +300,7 @@ const BookDetailModal: React.FC<BookDetailModalProps> = ({
                     ? handleOfflineDownload
                     : undefined
                 }
-                offlinePremiumLabel={offlinePremiumLabel}
+                offlinePremiumLabel={LOCAL_UNLOCK ? undefined : offlinePremiumLabel}
                 onMetadataValueClick={onMetadataValueClick}
               />
             )}

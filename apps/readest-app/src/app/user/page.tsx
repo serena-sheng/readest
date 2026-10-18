@@ -14,6 +14,7 @@ import { useUserActions } from '@/hooks/useUserActions';
 import { useAvailablePlans } from '@/hooks/useAvailablePlans';
 import type { PlanType } from '@/types/quota';
 import { navigateBackFromProfile } from '@/utils/nav';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { eventDispatcher } from '@/utils/event';
 import { isTauriAppPlatform } from '@/services/environment';
 import { getPlanDetails, shouldUseBillingPortal } from './utils/plan';
@@ -79,8 +80,15 @@ const ProfilePage = () => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // Local unlock build: every plan is already unlocked, so the profile's plan
+  // comparison has nothing to sell. Send the user back to the library.
+  useEffect(() => {
+    if (LOCAL_UNLOCK) router.replace('/library');
+  }, [router]);
+
   useEffect(() => {
     if (!mounted) return;
+    if (LOCAL_UNLOCK) return;
 
     const isAuthenticated = user && token && appService;
     if (isAuthenticated) return;
@@ -290,6 +298,10 @@ const ProfilePage = () => {
   };
 
   if (!mounted) {
+    return null;
+  }
+
+  if (LOCAL_UNLOCK) {
     return null;
   }
 

@@ -127,7 +127,10 @@ const getCustomServicesRow = () =>
 
 // Custom TTS services are premium: free and signed-out readers see the row
 // with a Premium badge that routes to the upgrade page or sign-in.
-describe('TTSPanel custom TTS services premium gate', () => {
+// Local unlock build (`utils/localUnlock.ts`): custom TTS services are open to
+// every plan, so this upstream paywall suite no longer applies. Skipped, not
+// deleted, so the file stays easy to reconcile with upstream.
+describe.skip('TTSPanel custom TTS services premium gate', () => {
   beforeEach(() => {
     state.token = null;
     state.user = null;

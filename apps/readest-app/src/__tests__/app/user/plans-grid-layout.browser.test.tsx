@@ -60,7 +60,10 @@ beforeAll(async () => {
   await page.viewport(1280, 1024);
 });
 
-describe('plans grid layout', () => {
+// Local unlock build (`utils/localUnlock.ts`): PlansComparison renders nothing,
+// so there is no grid layout left to verify. Skipped, not deleted, to ease
+// syncing with upstream.
+describe.skip('plans grid layout', () => {
   it('never goes wider than two columns, however wide the viewport', async () => {
     for (const width of [1280, 1600, 2560]) {
       await page.viewport(width, 1024);

@@ -34,6 +34,7 @@ import { useLocalSendStore } from '@/store/localsendStore';
 import { CatalogManager } from '@/app/opds/components/CatalogManager';
 import { saveSysSettings } from '@/helpers/settings';
 import { isCloudSyncAllowed } from '@/utils/access';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { isTauriAppPlatform, isWebAppPlatform } from '@/services/environment';
 import {
   getLocalSendAlias,
@@ -158,7 +159,8 @@ const IntegrationsPanel: React.FC = () => {
   // returns true for every plan until `CLOUD_SYNC_REQUIRES_PREMIUM` is flipped
   // back on. The `?? 'free'` keeps the (re-gated) loading state non-premium.
   const { userProfilePlan, customizationPurchased } = useQuotaStats();
-  const isCloudSyncPremium = isCloudSyncAllowed(userProfilePlan ?? 'free', customizationPurchased);
+  const isCloudSyncPremium =
+    LOCAL_UNLOCK || isCloudSyncAllowed(userProfilePlan ?? 'free', customizationPurchased);
   const premiumBadge = shouldShowCloudProviderBadge({
     signedIn: !!user,
     planLoading: userProfilePlan === undefined,

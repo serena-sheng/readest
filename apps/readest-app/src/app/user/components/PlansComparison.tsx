@@ -3,6 +3,7 @@ import { AvailablePlan, PlanInterval, PlanType, UserPlan } from '@/types/quota';
 import { getPlanDetails, getSubscriptionIntervals, getYearlySavingsPercent } from '../utils/plan';
 import BillingIntervalToggle from './BillingIntervalToggle';
 import PlanCard from './PlanCard';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 
 interface PlansComparisonProps {
   availablePlans: AvailablePlan[];
@@ -22,6 +23,8 @@ const PlansComparison: React.FC<PlansComparisonProps> = ({
   onSubscribe,
 }) => {
   const [interval, setInterval] = useState<PlanInterval>('month');
+  // Local unlock build: no plan comparison, prices, or upgrade CTAs.
+  if (LOCAL_UNLOCK) return null;
 
   const intervals = getSubscriptionIntervals(availablePlans);
   const savingsPercent = getYearlySavingsPercent(availablePlans);

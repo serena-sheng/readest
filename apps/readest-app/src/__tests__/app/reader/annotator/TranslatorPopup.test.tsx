@@ -204,7 +204,9 @@ describe('TranslatorPopup provider list', () => {
     ];
   });
 
-  it('relabels custom translators when the session gains premium', async () => {
+  // Local unlock build (`utils/localUnlock.ts`): custom translators are never
+  // labelled premium, so the label never changes with the session.
+  it.skip('relabels custom translators when the session gains premium', async () => {
     mockToken = 'readest-token';
     const { rerender } = await renderPopup();
     expect(await screen.findByRole('option', { name: 'Ollama (Premium)' })).toBeTruthy();

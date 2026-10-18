@@ -34,6 +34,7 @@ import {
   useCustomTranslatorStore,
 } from '@/store/customTranslatorStore';
 import { isCustomTranslatorAllowed } from '@/utils/access';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { eventDispatcher } from '@/utils/event';
 import { evictProvider, isSystemDictionaryEnabled } from '@/services/dictionaries/registry';
 import { getContextTranslator } from '@/services/dictionaries/providers/contextProvider';
@@ -295,7 +296,7 @@ const CustomDictionaries: React.FC<CustomDictionariesProps> = ({ onBack }) => {
   // translators re-renders the row when one is added or removed.
   const { token } = useAuth();
   useCustomTranslatorStore((s) => s.translators);
-  const hasPremium = isCustomTranslatorAllowed(token);
+  const hasPremium = LOCAL_UNLOCK || isCustomTranslatorAllowed(token);
   const llmTranslators = getLLMTranslators();
   const contextTranslator = hasPremium ? getContextTranslator() : undefined;
 

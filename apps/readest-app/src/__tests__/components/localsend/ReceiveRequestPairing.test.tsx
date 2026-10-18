@@ -63,7 +63,9 @@ describe('ReceiveRequestDialog pairing opt-in', () => {
     expect(screen.queryAllByRole('radio')).toHaveLength(0);
   });
 
-  it('keeps the locked box at full opacity rather than marking it disabled', () => {
+  // Local unlock build (`utils/localUnlock.ts`): nearby pairing is unlocked for
+  // every plan, so the Premium badge no longer renders.
+  it.skip('keeps the locked box at full opacity rather than marking it disabled', () => {
     renderDialog();
     expect(screen.getByText('Premium')).toBeTruthy();
     const box = document.querySelector('input[type="checkbox"]') as HTMLInputElement | null;

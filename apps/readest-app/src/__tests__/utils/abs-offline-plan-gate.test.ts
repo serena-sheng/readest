@@ -1,3 +1,6 @@
+// Local unlock build (`utils/localUnlock.ts`): offline Audiobookshelf downloads
+// are open for every plan, so these upstream gate assertions no longer apply.
+// Skipped, not deleted, so the file stays easy to reconcile with upstream.
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -6,7 +9,7 @@ import {
   isAbsOfflineInPlan,
 } from '@/utils/access';
 
-describe('isAbsOfflineInPlan', () => {
+describe.skip('isAbsOfflineInPlan', () => {
   test('any paid plan can download Audiobookshelf books for offline use', () => {
     expect(isAbsOfflineInPlan('plus', false)).toBe(true);
     expect(isAbsOfflineInPlan('pro', false)).toBe(true);
@@ -19,7 +22,7 @@ describe('isAbsOfflineInPlan', () => {
   });
 });
 
-describe('isAbsOfflineAllowed (premium paywall)', () => {
+describe.skip('isAbsOfflineAllowed (premium paywall)', () => {
   test('offline Audiobookshelf downloads require a paid plan', () => {
     expect(ABS_OFFLINE_REQUIRES_PREMIUM).toBe(true);
     expect(isAbsOfflineAllowed('free', false)).toBe(false);

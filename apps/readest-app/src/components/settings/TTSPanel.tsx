@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { useKeyDownActions } from '@/hooks/useKeyDownActions';
 import { isCustomTTSAllowed } from '@/utils/access';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { navigateToLogin, navigateToProfile } from '@/utils/nav';
 import { useReaderStore } from '@/store/readerStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -33,7 +34,7 @@ const TTSPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }
   const { envConfig } = useEnv();
   const router = useAppRouter();
   const { token, user } = useAuth();
-  const hasPremium = isCustomTTSAllowed(token);
+  const hasPremium = LOCAL_UNLOCK || isCustomTTSAllowed(token);
   const [showCustomServices, setShowCustomServices] = useState(false);
   const { getViewSettings } = useReaderStore();
   const { settings, setSettings, saveSettings } = useSettingsStore();

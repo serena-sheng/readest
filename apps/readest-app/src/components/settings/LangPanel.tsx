@@ -18,6 +18,7 @@ import { DEFAULT_PROMPT_ID, isCustomTranslatorName } from '@/services/translator
 import { useCustomTranslatorStore } from '@/store/customTranslatorStore';
 import { getLocale } from '@/utils/misc';
 import { isCustomTranslatorAllowed } from '@/utils/access';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { navigateToLogin, navigateToProfile } from '@/utils/nav';
 import { useResetViewSettings } from '@/hooks/useResetSettings';
 import { useKeyDownActions } from '@/hooks/useKeyDownActions';
@@ -44,7 +45,7 @@ const LangPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset 
   const router = useAppRouter();
   const { token, user } = useAuth();
   const { envConfig } = useEnv();
-  const hasPremium = isCustomTranslatorAllowed(token);
+  const hasPremium = LOCAL_UNLOCK || isCustomTranslatorAllowed(token);
   const { settings, applyUILanguage, activeSettingsItemId, setActiveSettingsItemId } =
     useSettingsStore();
   const { getView, getViewSettings, setViewSettings, recreateViewer } = useReaderStore();
