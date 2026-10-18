@@ -4,6 +4,7 @@ import {
   generateLightPalette,
   generateDarkPalette,
   themeVariables,
+  themes,
   applyCustomTheme,
   type BaseColor,
   type CustomTheme,
@@ -257,5 +258,41 @@ describe('applyCustomTheme', () => {
     const styles = document.querySelectorAll('#theme-custom-1-styles');
     expect(styles).toHaveLength(1);
     expect(styles[0]!.textContent).toContain('--color-base-100: #f0f0f0');
+  });
+});
+
+describe('emm theme', () => {
+  const emm = themes.find((theme) => theme.name === 'emm');
+
+  it('is registered with a light and a dark palette', () => {
+    expect(emm).toBeDefined();
+    expect(emm!.colors.light).toBeDefined();
+    expect(emm!.colors.dark).toBeDefined();
+  });
+
+  it('maps the prototype tokens onto the daisyUI slots', () => {
+    expect(emm!.colors.light).toMatchObject({
+      'base-100': '#ffffff',
+      'base-200': '#e9e9e7',
+      'base-content': '#1d1d1f',
+      primary: '#305f4b',
+      'primary-content': '#ffffff',
+    });
+    expect(emm!.colors.dark).toMatchObject({
+      'base-100': '#212427',
+      'base-200': '#16181a',
+      'base-content': '#ededed',
+      primary: '#7fb79c',
+      'primary-content': '#16181a',
+    });
+  });
+
+  it('pins its own panel and control radii', () => {
+    for (const scheme of ['light', 'dark'] as const) {
+      const vars = themeVariables(emm!.colors[scheme], scheme);
+      expect(vars['--radius-box']).toBe('1rem');
+      expect(vars['--radius-field']).toBe('0.75rem');
+      expect(vars['--color-primary-content']).toBe(scheme === 'dark' ? '#16181a' : '#ffffff');
+    }
   });
 });

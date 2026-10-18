@@ -28,6 +28,20 @@ export type Palette = {
   accent: string;
 };
 
+/**
+ * Tokens a palette may pin on top of the shared daisyUI mapping. Kept out of
+ * `Palette` itself so `keyof Palette` stays the set of colors (`updateAppTheme`
+ * indexes a palette by those keys); `themeVariables` fills the daisyUI defaults
+ * for anything a theme leaves unset.
+ */
+export type PaletteOverrides = {
+  'primary-content'?: string;
+  'radius-box'?: string;
+  'radius-field'?: string;
+};
+
+export type ThemedPalette = Palette & PaletteOverrides;
+
 export type Theme = {
   name: string;
   label: string;
@@ -76,16 +90,20 @@ const STATE_COLORS = {
  * compiles the built-in themes (daisyui-themes.ts) and by `applyCustomTheme`,
  * which injects custom themes at runtime, so both paths render identically.
  * The radius/depth tokens pin daisyUI 4's shape: 0.5rem fields, 1rem boxes,
- * pill badges and toggles, and no faux-3D shading.
+ * pill badges and toggles, and no faux-3D shading. A `ThemedPalette` may pin
+ * its own primary content color and radii (see `PaletteOverrides`).
  */
-export const themeVariables = (palette: Palette, scheme: ColorScheme): Record<string, string> => ({
+export const themeVariables = (
+  palette: ThemedPalette,
+  scheme: ColorScheme,
+): Record<string, string> => ({
   'color-scheme': scheme,
   '--color-base-100': palette['base-100'],
   '--color-base-200': palette['base-200'],
   '--color-base-300': palette['base-300'],
   '--color-base-content': palette['base-content'],
   '--color-primary': palette.primary,
-  '--color-primary-content': contentColorFor(palette.primary),
+  '--color-primary-content': palette['primary-content'] ?? contentColorFor(palette.primary),
   '--color-secondary': palette.secondary,
   '--color-secondary-content': contentColorFor(palette.secondary),
   '--color-accent': palette.accent,
@@ -101,8 +119,8 @@ export const themeVariables = (palette: Palette, scheme: ColorScheme): Record<st
   '--color-error': STATE_COLORS.error[0],
   '--color-error-content': STATE_COLORS.error[1],
   '--radius-selector': '1.9rem',
-  '--radius-field': '0.5rem',
-  '--radius-box': '1rem',
+  '--radius-field': palette['radius-field'] ?? '0.5rem',
+  '--radius-box': palette['radius-box'] ?? '1rem',
   '--size-selector': '0.25rem',
   '--size-field': '0.25rem',
   '--border': '1px',
@@ -139,6 +157,42 @@ export const generateDarkPalette = ({ bg, fg, primary }: BaseColor) => {
 };
 
 const _ = (stubKey: string) => stubKey;
+
+// The `emm` theme mirrors a Common Reader style prototype: a deep green accent
+// on a warm neutral canvas. Its separators and shape come from the prototype's
+// own tokens (7% / 9% ink hairlines, 18px panels, 12px controls) rather than
+// from `generate*Palette`, so `base-200` is the canvas and `base-100` the card.
+// The slots the prototype does not name (secondary, accent, neutral) follow the
+// tinycolor rules in `generate*Palette`.
+const emmLightPalette: ThemedPalette = {
+  'base-100': '#ffffff', // card
+  'base-200': '#e9e9e7', // canvas
+  'base-300': '#d9d9d7', // rgba(0, 0, 0, 0.07) over the canvas
+  'base-content': '#1d1d1f', // ink
+  neutral: '#d9d9d9',
+  'neutral-content': '#515151',
+  primary: '#305f4b', // accent green
+  'primary-content': '#ffffff',
+  secondary: '#52a380',
+  accent: '#305f38',
+  'radius-box': '1rem',
+  'radius-field': '0.75rem',
+};
+
+const emmDarkPalette: ThemedPalette = {
+  'base-100': '#212427', // card
+  'base-200': '#16181a', // canvas
+  'base-300': '#2b2d2f', // rgba(255, 255, 255, 0.09) over the canvas
+  'base-content': '#ededed', // ink
+  neutral: '#4a4a4a',
+  'neutral-content': '#bababa',
+  primary: '#7fb79c', // accent green
+  'primary-content': '#16181a', // 7.76:1 on #7fb79c; white is only 2.29:1,
+  secondary: '#4b8569',
+  accent: '#9c7fb7',
+  'radius-box': '1rem',
+  'radius-field': '0.75rem',
+};
 
 export const themes = [
   {
@@ -227,6 +281,14 @@ export const themes = [
     colors: {
       light: generateLightPalette({ fg: '#423126', bg: '#fff7f0', primary: '#fe6b64' }),
       dark: generateDarkPalette({ fg: '#f6e1d7', bg: '#3c2b25', primary: '#ff9c94' }),
+    },
+  },
+  {
+    name: 'emm',
+    label: _('Emm'),
+    colors: {
+      light: emmLightPalette,
+      dark: emmDarkPalette,
     },
   },
 ] as Theme[];
