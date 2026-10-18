@@ -5,6 +5,7 @@ import { isPWA, isTauriAppPlatform, isWebAppPlatform } from '@/services/environm
 import { BOOK_IDS_SEPARATOR } from '@/services/constants';
 import { AppService } from '@/types/system';
 import { windowNeedsClientOutline } from '@/utils/window';
+import { isLocalAuthEnabled } from '@/utils/localAuth';
 
 // Labels handed out whose windows are not created yet, so two overlapping
 // launches that read the same window list do not pick the same label.
@@ -126,6 +127,9 @@ export const navigateToReader = (
 };
 
 export const navigateToLogin = (router: ReturnType<typeof useRouter>) => {
+  // Local build: there is no sign-in page, so stay where the reader already is
+  // instead of pushing a route that immediately bounces back to /library.
+  if (isLocalAuthEnabled()) return;
   const pathname = window.location.pathname;
   const search = window.location.search;
   const currentPath = pathname !== '/auth' ? pathname + search : '/';
@@ -200,6 +204,7 @@ export const redirectToLibrary = () => {
 };
 
 export const navigateToResetPassword = (router: ReturnType<typeof useRouter>) => {
+  if (isLocalAuthEnabled()) return;
   const pathname = window.location.pathname;
   const search = window.location.search;
   const currentPath = pathname !== '/auth' ? pathname + search : '/';
@@ -207,6 +212,7 @@ export const navigateToResetPassword = (router: ReturnType<typeof useRouter>) =>
 };
 
 export const navigateToUpdatePassword = (router: ReturnType<typeof useRouter>) => {
+  if (isLocalAuthEnabled()) return;
   const pathname = window.location.pathname;
   const search = window.location.search;
   const currentPath = pathname !== '/auth' ? pathname + search : '/';

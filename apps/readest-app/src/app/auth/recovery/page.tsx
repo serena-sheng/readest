@@ -8,6 +8,8 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { Auth } from '@supabase/auth-ui-react';
 import { supabase } from '@/utils/supabase';
+import { isLocalAuthEnabled } from '@/utils/localAuth';
+import LocalModeRedirect from '../components/LocalModeRedirect';
 
 export default function ResetPasswordPage() {
   const _ = useTranslation();
@@ -30,6 +32,8 @@ export default function ResetPasswordPage() {
   };
 
   useEffect(() => {
+    // Local build: nothing to observe — there is no password to reset.
+    if (isLocalAuthEnabled()) return;
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.access_token && session.user && event === 'USER_UPDATED') {
         login(session.access_token, session.user);
@@ -43,6 +47,10 @@ export default function ResetPasswordPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
+
+  if (isLocalAuthEnabled()) {
+    return <LocalModeRedirect />;
+  }
 
   return (
     <div className='flex min-h-screen items-center justify-center'>

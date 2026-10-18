@@ -21,6 +21,13 @@ vi.mock('@/utils/supabase', async () => {
 
 vi.mock('posthog-js', () => ({ default: { identify: vi.fn() } }));
 
+// Local build (`utils/localUnlock.ts`): this suite covers the Supabase
+// provider, so pin the local switch off to exercise it unchanged.
+vi.mock('@/utils/localAuth', () => ({
+  LOCAL_USER: { id: 'local-device' },
+  isLocalAuthEnabled: () => false,
+}));
+
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { supabase } from '@/utils/supabase';
 

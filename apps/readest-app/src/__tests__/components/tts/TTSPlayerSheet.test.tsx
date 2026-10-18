@@ -842,7 +842,10 @@ describe('TTSPlayerSheet', () => {
     expect(props.onClose).toHaveBeenCalled();
   });
 
-  test('a signed-out reader tapping a Readest voice is sent to sign in', async () => {
+  // Local build (`utils/localUnlock.ts`): there is no `/auth` route, so
+  // `navigateToLogin` is a no-op rather than routing to a page that would
+  // bounce straight back to the library.
+  test('a signed-out reader tapping a Readest voice stays in the reader', async () => {
     mockAuth.user = null;
     const groups = [
       {
@@ -864,7 +867,7 @@ describe('TTSPlayerSheet', () => {
     fireEvent.click(screen.getByLabelText('Voice'));
     fireEvent.click(await waitFor(() => screen.getByRole('button', { name: /^HeartPlus$/ })));
     expect(props.onSetVoice).not.toHaveBeenCalled();
-    expect(routerPush).toHaveBeenCalledWith(expect.stringMatching(/^\/auth/));
+    expect(routerPush).not.toHaveBeenCalled();
   });
 
   test('reopening the sheet returns to the main view', async () => {

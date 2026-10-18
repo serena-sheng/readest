@@ -22,11 +22,13 @@ import { invoke } from '@tauri-apps/api/core';
 import { handleAuthCallback, parseOAuthCallbackUrl } from '@/helpers/auth';
 import { getUserProfilePlan } from '@/utils/access';
 import { getHorizontalInsetStyle } from '@/utils/insets';
+import { isLocalAuthEnabled } from '@/utils/localAuth';
 import { getAppleIdAuth, Scope } from './utils/appleIdAuth';
 import { authWithCustomTab, authWithSafari } from './utils/nativeAuth';
 import WindowButtons from '@/components/WindowButtons';
 import type { OAuthProvider } from './components/ProviderLogin';
 import AuthPanel from './components/AuthPanel';
+import LocalModeRedirect from './components/LocalModeRedirect';
 
 interface SingleInstancePayload {
   args: string[];
@@ -259,6 +261,8 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (!isTauriAppPlatform()) return;
+    // Local build: no sign-in page and no OAuth round-trip to start.
+    if (isLocalAuthEnabled()) return;
     if (isOAuthServerRunning.current) return;
     isOAuthServerRunning.current = true;
 
@@ -277,6 +281,8 @@ export default function AuthPage() {
   }, []);
 
   useEffect(() => {
+    // Local build: there is no Supabase session to observe.
+    if (isLocalAuthEnabled()) return;
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.access_token && session.user) {
         login(session.access_token, session.user);
@@ -303,6 +309,12 @@ export default function AuthPage() {
 
   if (!isMounted) {
     return null;
+  }
+
+  // Local build: `/auth` is not a page here — bounce any entry (button, stale
+  // bookmark, deep link) straight to the library.
+  if (isLocalAuthEnabled()) {
+    return <LocalModeRedirect />;
   }
 
   // For tauri app development, use a custom OAuth server to handle the OAuth callback

@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/supabase';
+import { LOCAL_USER, isLocalAuthEnabled } from '@/utils/localAuth';
 import posthog from 'posthog-js';
 
 interface AuthContextType {
@@ -23,7 +24,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+// Local build (`utils/localUnlock.ts`): no server session exists, so report a
+// device-local user and never touch Supabase. The callbacks are deliberate
+// no-ops — there is no login page and no session to refresh or revoke.
+const LocalAuthProvider = ({ children }: { children: ReactNode }) => {
+  const value = useMemo<AuthContextType>(
+    () => ({
+      token: null,
+      user: LOCAL_USER,
+      login: () => {},
+      logout: () => {},
+      refresh: () => {},
+    }),
+    [],
+  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('token');
@@ -116,6 +134,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+export const AuthProvider = ({ children }: { children: ReactNode }) =>
+  isLocalAuthEnabled() ? (
+    <LocalAuthProvider>{children}</LocalAuthProvider>
+  ) : (
+    <SupabaseAuthProvider>{children}</SupabaseAuthProvider>
+  );
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);

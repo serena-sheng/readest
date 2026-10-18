@@ -29,6 +29,14 @@ vi.mock('@/services/constants', () => ({
   BOOK_IDS_SEPARATOR: '+',
 }));
 
+// Local build switch: keep the upstream navigation assertions on the
+// non-local path, and flip it on for the local-mode guards below.
+const localAuth = vi.hoisted(() => ({ enabled: false }));
+vi.mock('@/utils/localAuth', () => ({
+  LOCAL_USER: { id: 'local-device' },
+  isLocalAuthEnabled: () => localAuth.enabled,
+}));
+
 vi.mock('@tauri-apps/plugin-os', () => ({
   version: vi.fn(),
 }));
@@ -97,6 +105,9 @@ beforeEach(() => {
 
   // Reset sessionStorage
   sessionStorage.clear();
+
+  // Upstream navigation behaviour unless a local-mode test opts in.
+  localAuth.enabled = false;
 });
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -358,6 +369,38 @@ describe('navigateToUpdatePassword', () => {
 
     const url = router.push.mock.calls[0]![0] as string;
     expect(url).toBe('/auth/update?redirect=%2F');
+  });
+});
+
+// Local build (`utils/localUnlock.ts`): `/auth` is not a page, so these become
+// no-ops instead of pushing a route that would immediately bounce to /library.
+describe('auth navigation in the local build', () => {
+  beforeEach(() => {
+    localAuth.enabled = true;
+  });
+
+  test('navigateToLogin stays on the current page', () => {
+    const router = mockRouter();
+
+    navigateToLogin(router);
+
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  test('navigateToResetPassword stays on the current page', () => {
+    const router = mockRouter();
+
+    navigateToResetPassword(router);
+
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  test('navigateToUpdatePassword stays on the current page', () => {
+    const router = mockRouter();
+
+    navigateToUpdatePassword(router);
+
+    expect(router.push).not.toHaveBeenCalled();
   });
 });
 

@@ -3,18 +3,26 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
+import { isLocalAuthEnabled } from '@/utils/localAuth';
+import LocalModeRedirect from '../components/LocalModeRedirect';
 
 export default function AuthErrorPage() {
   const router = useRouter();
   useTheme({ systemUIVisible: false });
 
   useEffect(() => {
+    // Local build: there is no login page to return to.
+    if (isLocalAuthEnabled()) return;
     const timer = setTimeout(() => {
       router.push('/auth');
     }, 3000);
 
     return () => clearTimeout(timer);
   }, [router]);
+
+  if (isLocalAuthEnabled()) {
+    return <LocalModeRedirect />;
+  }
 
   return (
     <div className='bg-base-200/50 text-base-content hero h-screen items-center justify-center'>

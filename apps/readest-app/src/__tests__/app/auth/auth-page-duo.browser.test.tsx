@@ -124,6 +124,13 @@ vi.mock('@/app/auth/utils/nativeAuth', () => ({
   authWithSafari: vi.fn(),
 }));
 vi.mock('@/components/WindowButtons', () => ({ default: () => null }));
+
+// Local build (`utils/localUnlock.ts`): `/auth` renders a redirect there. This
+// suite measures the upstream sign-in layout, so pin the local switch off.
+vi.mock('@/utils/localAuth', () => ({
+  LOCAL_USER: { id: 'local-device' },
+  isLocalAuthEnabled: () => false,
+}));
 // Only the header is measured; the sign-in form isn't needed for it.
 vi.mock('@/app/auth/components/AuthPanel', () => ({ default: () => null }));
 vi.mock('@/hooks/useEnsureSettingsLoaded', () => ({ useEnsureSettingsLoaded: () => {} }));

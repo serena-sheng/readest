@@ -25,6 +25,7 @@ import { DEFAULT_NEARBY_WORDS } from '@/utils/searchConfig';
 import { clearLibrarySearchHistory, loadLibrarySearchHistory } from './utils/searchHistory';
 import type { LibrarySearchTarget } from '@/types/book';
 import { navigateToLibrary, navigateToLogin, navigateToReader } from '@/utils/nav';
+import { isLocalAuthEnabled } from '@/utils/localAuth';
 import { splitLibraryOpenIds } from '@/utils/audiobook';
 import { listFormater, markBookDeleted } from '@/utils/book';
 import { getImportErrorMessage } from '@/services/errors';
@@ -732,6 +733,9 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     isInitiating.current = true;
 
     const initLogin = async () => {
+      // Local build: there is no account session to keep, and pushing /auth
+      // would only bounce straight back to the library.
+      if (isLocalAuthEnabled()) return;
       const appService = await envConfig.getAppService();
       const settings = await appService.loadSettings();
       if (token && user) {

@@ -5,6 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useThemeStore } from '@/store/themeStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/utils/supabase';
+import { isLocalAuthEnabled } from '@/utils/localAuth';
+import LocalModeRedirect from '../components/LocalModeRedirect';
 
 export default function UpdateEmailPage() {
   const _ = useTranslation();
@@ -18,10 +20,16 @@ export default function UpdateEmailPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Local build: there is no account email to change.
+    if (isLocalAuthEnabled()) return;
     if (!user) {
       router.push('/login');
     }
   }, [user, router]);
+
+  if (isLocalAuthEnabled()) {
+    return <LocalModeRedirect />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

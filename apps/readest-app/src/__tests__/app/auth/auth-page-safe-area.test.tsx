@@ -56,6 +56,13 @@ vi.mock('@/hooks/useTranslation', () => ({
   useTranslation: () => (key: string) => key,
 }));
 
+// Local build (`utils/localUnlock.ts`): `/auth` renders a redirect there. This
+// suite measures the upstream sign-in layout, so pin the local switch off.
+vi.mock('@/utils/localAuth', () => ({
+  LOCAL_USER: { id: 'local-device' },
+  isLocalAuthEnabled: () => false,
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }));
