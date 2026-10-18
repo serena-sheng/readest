@@ -1054,12 +1054,27 @@ const getRubyStyles = (viewSettings: ViewSettings) => {
   ruby.wl-gloss {
     cursor: help;
   }
+  /* Word Lens glosses: quiet by default, revealed on hover. Sitting at 0.7
+     opacity in full flow made a page of English look speckled with Chinese;
+     a faint pill plus a hover reveal keeps the help while staying invisible
+     until the reader asks for it. */
   ruby.wl-gloss > rt {
     font-size: ${fontSize}em;
     line-height: 1.1;
-    ${color ? `color: ${color};\n    opacity: 1;` : 'opacity: 0.7;'}
+    ${color ? `color: ${color};` : ''}
     font-weight: normal;
     text-align: center;
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+    background-color: color-mix(in srgb, currentColor 8%, transparent);
+    border-radius: 3px;
+    padding: 0 0.3em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+  ruby.wl-gloss:hover > rt,
+  ruby.wl-gloss:focus-within > rt {
+    opacity: 0.85;
   }
 `;
 };
