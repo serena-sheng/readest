@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { LOCAL_AI_BASE_URL } from '@/services/ai/askLocal';
+import { saveNote } from '@/services/ai/localNotes';
 import { getRangeRectInWebview } from '@/utils/sel';
 import type { Rect, TextSelection } from '@/utils/sel';
 import { writeTextToClipboard } from '@/utils/clipboard';
@@ -209,17 +209,15 @@ const SelectionActions: React.FC<SelectionActionsProps> = ({
     if (saving) return;
     setSaving(true);
     try {
-      const response = await window.fetch(`${LOCAL_AI_BASE_URL}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          book: bookTitle,
-          quote: text,
-          note: note.trim(),
-          locator: buildNoteLocator(selection.range, href),
-        }),
+      await saveNote({
+        book: bookTitle,
+        quote: text,
+        note: note.trim(),
+        locator: buildNoteLocator(selection.range, href),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      // Surfaces that show saved ideas (the reader's idea panel) refresh on
+      // this event instead of polling the local service.
+      window.dispatchEvent(new CustomEvent('emm-note-saved'));
       toast('info', '已记下');
       setMode('actions');
       setNote('');
