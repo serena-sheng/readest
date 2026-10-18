@@ -110,7 +110,7 @@ const getInitialThemeMode = (): ThemeMode => {
 
 const getInitialThemeColor = (): string => {
   if (typeof window !== 'undefined' && localStorage) {
-    const defaultColor = window.__READEST_IS_EINK ? 'contrast' : 'default';
+    const defaultColor = window.__READEST_IS_EINK ? 'contrast' : 'emm';
     return localStorage.getItem('themeColor') || defaultColor;
   }
   return 'default';
@@ -366,7 +366,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
     resetThemeScopes: () => {
       if (typeof window !== 'undefined' && localStorage) {
         localStorage.setItem('themeMode', 'auto');
-        localStorage.setItem('themeColor', 'default');
+        localStorage.setItem('themeColor', 'emm');
         localStorage.removeItem(LIBRARY_THEME_MODE_KEY);
         localStorage.removeItem(LIBRARY_THEME_COLOR_KEY);
       }
