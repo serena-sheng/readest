@@ -70,16 +70,26 @@ const pickPageImage = (view: FoliateView | null): HTMLImageElement | null => {
   return best;
 };
 
+export type MangaTranslationMode = 'off' | 'bubble' | 'danmaku';
+
 export interface UseMangaTranslationResult {
   /** The current page has an image large enough to translate. */
   available: boolean;
   loading: boolean;
-  /** A translation result is mounted (possibly with zero bubbles). */
+  /** An overlay is displayed (possibly with zero bubbles); false when off. */
   translated: boolean;
+  /** Current display mode; `off` keeps `result` so it can be shown again. */
+  mode: MangaTranslationMode;
   /** Extra fields for rendering; `MangaOverlay` is mounted from these. */
   imageEl: HTMLImageElement | null;
   result: MangaPageResult | null;
+  /**
+   * Legacy two-state toggle: off → bubble, any mode → off. Unlike cycleMode,
+   * it clears the result, matching the pre-danmaku behaviour.
+   */
   toggle: () => Promise<void>;
+  /** off → bubble (translating once) → danmaku → off. */
+  cycleMode: () => Promise<void>;
 }
 
 export function useMangaTranslation(
@@ -92,6 +102,7 @@ export function useMangaTranslation(
   const [loading, setLoading] = useState(false);
   const [imageEl, setImageEl] = useState<HTMLImageElement | null>(null);
   const [result, setResult] = useState<MangaPageResult | null>(null);
+  const [mode, setMode] = useState<MangaTranslationMode>('off');
   const abortRef = useRef<AbortController | null>(null);
   // Page results the service already produced in this book session. The
   // service has its own persistent cache; this only saves re-reading the image
@@ -120,6 +131,7 @@ export function useMangaTranslation(
     abortRef.current = null;
     setLoading(false);
     setResult(null);
+    setMode('off');
 
     const refresh = () => {
       const image = pickPageImage(view);
@@ -151,13 +163,9 @@ export function useMangaTranslation(
     };
   }, [bookKey, view, pageLocation]);
 
-  const toggle = useCallback(async () => {
+  /** Translate the current page (once) and show the bubble overlay. */
+  const showTranslation = useCallback(async () => {
     if (loading) return;
-
-    if (result) {
-      setResult(null);
-      return;
-    }
 
     const image = pickPageImage(view);
     if (!image) {
@@ -165,6 +173,14 @@ export function useMangaTranslation(
         type: 'warning',
         message: _('本页没有可翻译的图片'),
       });
+      return;
+    }
+
+    // Turning the overlay back on reuses the page result already in memory;
+    // `mode === 'off'` keeps it instead of clearing it.
+    if (result) {
+      setImageEl(image);
+      setMode('bubble');
       return;
     }
 
@@ -182,6 +198,7 @@ export function useMangaTranslation(
     if (cached) {
       setImageEl(image);
       setResult(cached);
+      setMode('bubble');
       return;
     }
 
@@ -209,6 +226,7 @@ export function useMangaTranslation(
       if (src) cacheRef.current.set(src, page);
       setImageEl(image);
       setResult(page);
+      setMode('bubble');
       if (page.bubbles.length > 0) {
         void eventDispatcher.dispatch('toast', {
           type: 'success',
@@ -233,13 +251,34 @@ export function useMangaTranslation(
     }
   }, [_, loading, result, view]);
 
+  const toggle = useCallback(async () => {
+    if (loading) return;
+    if (mode !== 'off') {
+      setMode('off');
+      setResult(null);
+      return;
+    }
+    await showTranslation();
+  }, [loading, mode, showTranslation]);
+
+  const cycleMode = useCallback(async () => {
+    if (loading) return;
+    if (mode === 'off') {
+      await showTranslation();
+      return;
+    }
+    setMode(mode === 'bubble' ? 'danmaku' : 'off');
+  }, [loading, mode, showTranslation]);
+
   return {
     available,
     loading,
-    translated: result !== null,
+    translated: mode !== 'off',
+    mode,
     imageEl,
     result,
     toggle,
+    cycleMode,
   };
 }
 
