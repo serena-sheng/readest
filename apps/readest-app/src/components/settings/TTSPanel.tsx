@@ -34,6 +34,7 @@ import {
   SettingsSwitchRow,
 } from './primitives';
 import CustomTTSServices from './CustomTTSServices';
+import TTSEndpointsSection from './TTSEndpointsSection';
 import TTSHighlightStyleEditor, { TTSHighlightStyle } from './theme/TTSHighlightStyleEditor';
 
 const TTSPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }) => {
@@ -239,6 +240,8 @@ const TTSPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }
           data-setting-id='settings.tts.customServices'
         />
       </BoxedList>
+
+      {LOCAL_UNLOCK && <TTSEndpointsSection />}
 
       {visibleVoiceGroups.length > 0 && (
         <BoxedList

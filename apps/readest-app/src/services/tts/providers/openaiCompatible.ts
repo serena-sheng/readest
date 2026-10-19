@@ -7,6 +7,8 @@
 
 import { getAIFetch } from '@/services/ai/utils/httpFetch';
 import type { CustomTTSService } from '@/types/customTTS';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
+import { getActiveEndpoint, type TTSEndpoint } from '../customEndpoints';
 import { MULTILINGUAL_LANG, type TTSVoice, type TTSVoicesGroup } from '../types';
 import {
   type SpeechProvider,
@@ -47,6 +49,20 @@ const endpoint = (service: CustomTTSService, path: string) =>
 
 const authHeaders = (service: CustomTTSService): Record<string, string> =>
   service.apiKey ? { Authorization: `Bearer ${service.apiKey}` } : {};
+
+// One local endpoint (`emm.tts.endpoints`) is presented to the picker as a
+// service too; its id never contains ':' so the voice-id split still works.
+const ENDPOINT_SERVICE_ID = 'custom-endpoint';
+
+const endpointService = (endpoint: TTSEndpoint): CustomTTSService => ({
+  id: ENDPOINT_SERVICE_ID,
+  name: endpoint.name,
+  baseUrl: endpoint.baseUrl,
+  model: endpoint.model,
+  ...(endpoint.apiKey ? { apiKey: endpoint.apiKey } : {}),
+  addedAt: 0,
+  updatedAt: 0,
+});
 
 interface ListedVoice {
   name: string;
@@ -117,17 +133,32 @@ export class OpenAICompatibleSpeechProvider implements SpeechProvider {
 
   // `getServices`: the enabled services, read on every call so edits apply
   // without restarting Read Aloud. `isAllowed`: the premium gate.
+  // `getEndpointOverride`: a local, active `emm.tts.endpoints` entry; when one
+  // exists it replaces the configured services for this provider (local
+  // builds only — the default resolver never reads storage otherwise).
   constructor(
     readonly getServices: () => CustomTTSService[],
     private readonly isAllowed: () => Promise<boolean>,
+    private readonly getEndpointOverride: () => TTSEndpoint | null = () =>
+      LOCAL_UNLOCK ? getActiveEndpoint() : null,
   ) {}
 
   async init(): Promise<boolean> {
-    return this.getServices().length > 0 && (await this.isAllowed());
+    const endpoint = this.getEndpointOverride();
+    return (!!endpoint || this.getServices().length > 0) && (await this.isAllowed());
   }
 
   async getAllVoices(): Promise<TTSVoice[]> {
     if (!(await this.init())) return [];
+    const endpoint = this.getEndpointOverride();
+    if (endpoint) {
+      const voices = endpoint.voice ? [endpoint.voice] : OPENAI_TTS_VOICES;
+      return voices.map((name) => ({
+        id: customVoiceId(ENDPOINT_SERVICE_ID, name),
+        name,
+        lang: MULTILINGUAL_LANG,
+      }));
+    }
     const services = this.getServices();
     const lists = await Promise.all(services.map(fetchServiceVoices));
     return services.flatMap((service, i) =>
@@ -140,6 +171,10 @@ export class OpenAICompatibleSpeechProvider implements SpeechProvider {
   }
 
   groupVoices(voices: TTSVoice[]): Omit<TTSVoicesGroup, 'disabled'>[] {
+    const endpoint = this.getEndpointOverride();
+    if (endpoint) {
+      return [{ id: `${this.id}:${ENDPOINT_SERVICE_ID}`, name: endpoint.name, voices }];
+    }
     return this.getServices().map((service) => ({
       id: `${this.id}:${service.id}`,
       name: service.name,
@@ -148,6 +183,8 @@ export class OpenAICompatibleSpeechProvider implements SpeechProvider {
   }
 
   cacheScope(req: SpeechSynthesisRequest): string {
+    const endpoint = this.getEndpointOverride();
+    if (endpoint) return JSON.stringify([endpoint.baseUrl, endpoint.model, endpoint.voice]);
     const service = this.#resolve(req.voice)?.service;
     return JSON.stringify([service?.baseUrl, service?.model, service?.instructions]);
   }
@@ -156,10 +193,19 @@ export class OpenAICompatibleSpeechProvider implements SpeechProvider {
     req: SpeechSynthesisRequest,
     signal: AbortSignal,
   ): Promise<SpeechSynthesisResult> {
-    const resolved = this.#resolve(req.voice);
-    if (!resolved) throw new SpeechSynthesisPermanentError(`Unknown voice: ${req.voice}`);
+    const endpointOverride = this.getEndpointOverride();
+    let service: CustomTTSService;
+    let voice: string;
+    if (endpointOverride) {
+      service = endpointService(endpointOverride);
+      voice = endpointOverride.voice;
+    } else {
+      const resolved = this.#resolve(req.voice);
+      if (!resolved) throw new SpeechSynthesisPermanentError(`Unknown voice: ${req.voice}`);
+      service = resolved.service;
+      voice = resolved.voice;
+    }
     if (signal.aborted) throw abortError();
-    const { service, voice } = resolved;
     // Follow the caller's signal only while the request is in flight: tauriFetch
     // rejects unhandled when a finished request is aborted.
     const controller = new AbortController();
