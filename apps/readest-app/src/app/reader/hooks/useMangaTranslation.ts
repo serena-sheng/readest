@@ -111,15 +111,43 @@ export function useMangaTranslation(
   );
 
   // A page change removes the old overlay and never starts a new translation.
+  //
+  // The image only reaches its final size after the section lays out, so a
+  // single check on mount misses it and the toolbar button never appears.
+  // Re-check a few times, and again whenever the section finishes loading.
   useEffect(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     setLoading(false);
     setResult(null);
 
-    const image = pickPageImage(view);
-    setImageEl(image);
-    setAvailable(Boolean(image));
+    const refresh = () => {
+      const image = pickPageImage(view);
+      setImageEl(image);
+      setAvailable(Boolean(image));
+      return Boolean(image);
+    };
+
+    refresh();
+    const timers = [200, 600, 1200, 2400].map((delay) =>
+      setTimeout(() => {
+        if (refresh()) timers.forEach((timer) => clearTimeout(timer));
+      }, delay),
+    );
+
+    const viewAny = view as unknown as {
+      addEventListener?: (type: string, listener: () => void) => void;
+      removeEventListener?: (type: string, listener: () => void) => void;
+    } | null;
+    const onLoad = () => refresh();
+    // `view` is null before the reader mounts; the optional call on the method
+    // does not guard the object itself.
+    viewAny?.addEventListener?.('load', onLoad);
+
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      viewAny?.removeEventListener?.('load', onLoad);
+    };
   }, [bookKey, view, pageLocation]);
 
   const toggle = useCallback(async () => {
