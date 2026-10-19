@@ -139,7 +139,15 @@ describe('useTextTranslation cache integration', () => {
     });
     const paragraph = view.querySelector('p')!;
     expect(paragraph.classList.contains('translation-source')).toBe(true);
-    expect(paragraph.classList.contains('translation-source-done')).toBe(true);
+    // The tint belongs to a wrapper around the original text only — the
+    // paragraph container also holds the translation, which must stay plain.
+    expect(paragraph.classList.contains('translation-source-done')).toBe(false);
+    // With the source hidden the tint wrapper sits inside the hidden wrapper,
+    // so look it up as a descendant rather than a direct child.
+    const tint = paragraph.querySelector('.translation-source-tint');
+    expect(tint?.classList.contains('translation-source-done')).toBe(true);
+    expect(tint?.querySelector('.translation-target')).toBeNull();
+    expect(tint?.textContent).toBe('Marker paragraph');
   });
 
   test('reports progress and completion through the hint channel', async () => {

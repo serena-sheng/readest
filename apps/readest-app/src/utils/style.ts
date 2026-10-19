@@ -991,7 +991,7 @@ const getTranslationStyles = (viewSettings: ViewSettings) => `
      background tells the reader which text no longer needs a request. The
      color-mix line wins where supported and follows the book's own text color,
      so the tint works on light and dark themes alike. */
-  .translation-source-done {
+  .translation-source-tint.translation-source-done {
     background-color: rgba(250, 204, 21, 0.16);
     background-color: color-mix(in srgb, currentColor 10%, transparent);
     border-radius: 3px;

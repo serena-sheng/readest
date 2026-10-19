@@ -209,6 +209,38 @@ export const setSourceVisibility = (el: HTMLElement, visible: boolean) => {
   sourceNodes.forEach((node) => hider.appendChild(node));
 };
 
+const SOURCE_TINT_CLASS = 'translation-source-tint';
+
+/**
+ * Wraps a paragraph's original text so it can carry a tinted background
+ * without painting the translation that sits inside the same paragraph.
+ *
+ * The wrapper is `cfi-skip` for the same reason the hidden wrapper is: its
+ * children keep the exact text-node indexes and offsets they had unwrapped, so
+ * highlights and progress anchors still resolve.
+ */
+export const markSourceTranslated = (el: HTMLElement) => {
+  let wrapper = el.querySelector<HTMLElement>(`:scope > .${SOURCE_TINT_CLASS}`);
+  if (!wrapper) {
+    const sourceNodes = Array.from(el.childNodes).filter(
+      (node) =>
+        !(node.nodeType === Node.ELEMENT_NODE && (node as Element).classList.contains('translation-target')),
+    );
+    if (!sourceNodes.length) return;
+    wrapper = el.ownerDocument.createElement('font');
+    wrapper.className = `${SOURCE_TINT_CLASS} cfi-skip`;
+    el.insertBefore(wrapper, sourceNodes[0]!);
+    sourceNodes.forEach((node) => wrapper!.appendChild(node));
+  }
+  wrapper.classList.add('translation-source-done');
+};
+
+/** Removes the tint wrapper, restoring the paragraph's original children. */
+export const clearSourceTint = (el: HTMLElement) => {
+  const wrapper = el.querySelector<HTMLElement>(`:scope > .${SOURCE_TINT_CLASS}`);
+  if (wrapper) wrapper.replaceWith(...Array.from(wrapper.childNodes));
+};
+
 export function useTextTranslation(
   bookKey: string,
   view: FoliateView | HTMLElement | null,
@@ -325,7 +357,7 @@ export function useTextTranslation(
     }
     pendingDOMUpdates.current = [];
     translatedElements.current.forEach((element) => {
-      element.classList.remove('translation-source-done');
+      clearSourceTint(element);
       const translationTargets = element.querySelectorAll('.translation-target');
       translationTargets.forEach((target) => target.remove());
       // The hidden source wrapper is `display: none`, so a paragraph left with
@@ -442,9 +474,9 @@ export function useTextTranslation(
     batchDOMUpdate(() => {
       if (!enabled.current || el.querySelector('.translation-target')) return;
       el.classList.add('translation-source');
-      // Remembers that this paragraph already has a translation, so the
-      // original can carry a tinted background when it is shown side by side.
-      el.classList.add('translation-source-done');
+      // Tint only the original text: the wrapper excludes the translation
+      // target that is appended below, so the translation keeps no background.
+      markSourceTranslated(el);
       setSourceVisibility(el, !!showTranslateSourceRef.current);
       el.appendChild(wrapper);
       translatedElements.current.push(el);
