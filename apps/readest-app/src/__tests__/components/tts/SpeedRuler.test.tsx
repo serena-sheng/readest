@@ -13,11 +13,11 @@ describe('SpeedRuler', () => {
     vi.useRealTimers();
   });
 
-  test('renders a 0.5-3 slider and spotlights the current rate over its mark', () => {
+  test('renders a 0.5-4 slider and spotlights the current rate over its mark', () => {
     render(<SpeedRuler rate={1.0} onSelect={vi.fn()} />);
     const slider = screen.getByRole('slider');
     expect(slider.getAttribute('min')).toBe('0.5');
-    expect(slider.getAttribute('max')).toBe('3');
+    expect(slider.getAttribute('max')).toBe('4');
     expect(slider.getAttribute('step')).toBe('0.05');
     expect(screen.getByText('1×')).toBeTruthy();
     // The bright value label replaces the 1.0 mark it would overlap; the
@@ -25,6 +25,8 @@ describe('SpeedRuler', () => {
     expect(screen.getByText('1.0').className).toContain('invisible');
     expect(screen.getByText('0.5').className).not.toContain('invisible');
     expect(screen.getByText('3.0').className).not.toContain('invisible');
+    // The ruler now reaches 4x; the extreme marks stay visible.
+    expect(screen.getByText('4.0').className).not.toContain('invisible');
   });
 
   test('a mark a full 0.2 away from the value stays visible despite float error', () => {

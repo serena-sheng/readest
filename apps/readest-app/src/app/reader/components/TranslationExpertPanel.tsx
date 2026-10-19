@@ -14,7 +14,17 @@ import {
   splitStyleId,
 } from '@/services/ai/translationExperts';
 import type { TranslationExpert, TranslationStyles } from '@/services/ai/translationExperts';
+import {
+  deleteEndpoint,
+  getActiveEndpointId,
+  listEndpoints,
+  saveEndpoint,
+  setActiveEndpointId,
+  type TranslationEndpoint,
+  type TranslationEndpointKind,
+} from '@/services/translators/endpoints';
 import { eventDispatcher } from '@/utils/event';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 
 interface TranslationExpertPanelProps {
   /** Book title: the subtitle, and the key `/bind` stores the expert under. */
@@ -26,6 +36,30 @@ interface TranslationExpertPanelProps {
 }
 
 type Status = 'loading' | 'ready' | 'error';
+
+type EndpointDraft = {
+  name: string;
+  kind: TranslationEndpointKind;
+  baseUrl: string;
+  model: string;
+  apiKey: string;
+};
+
+const EMPTY_ENDPOINT_DRAFT: EndpointDraft = {
+  name: '',
+  kind: 'emm',
+  baseUrl: '',
+  model: '',
+  apiKey: '',
+};
+
+const hostOf = (baseUrl: string): string => {
+  try {
+    return new URL(baseUrl).host;
+  } catch {
+    return baseUrl;
+  }
+};
 
 const messageOf = (failure: unknown) =>
   failure instanceof Error ? failure.message : String(failure);
@@ -65,6 +99,16 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
   const [note, setNote] = useState('');
   const [noteFailed, setNoteFailed] = useState(false);
 
+  const [endpoints, setEndpoints] = useState<TranslationEndpoint[]>([]);
+  const [activeEndpointId, setActiveEndpointIdState] = useState<string | null>(null);
+  // undefined: the list; null: a new endpoint; a string: that endpoint.
+  const [editingEndpointId, setEditingEndpointId] = useState<string | null | undefined>(
+    undefined,
+  );
+  const [endpointDraft, setEndpointDraft] = useState<EndpointDraft>(EMPTY_ENDPOINT_DRAFT);
+  const [endpointTesting, setEndpointTesting] = useState(false);
+  const [endpointTestResult, setEndpointTestResult] = useState('');
+
   const loadStyles = useCallback(async () => {
     setStylesStatus('loading');
     try {
@@ -92,6 +136,8 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
   useEffect(() => {
     if (!open) return;
     setStyleId(getActiveStyle());
+    setEndpoints(listEndpoints());
+    setActiveEndpointIdState(getActiveEndpointId());
     void loadStyles();
     void loadExperts();
   }, [open, loadStyles, loadExperts]);
@@ -181,6 +227,122 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
       setNoteFailed(true);
     } finally {
       setBinding(false);
+    }
+  };
+
+  const refreshEndpoints = () => {
+    setEndpoints(listEndpoints());
+    setActiveEndpointIdState(getActiveEndpointId());
+  };
+
+  const openNewEndpoint = () => {
+    setEndpointDraft(EMPTY_ENDPOINT_DRAFT);
+    setEditingEndpointId(null);
+    setEndpointTestResult('');
+  };
+
+  const openEditEndpoint = (endpoint: TranslationEndpoint) => {
+    setEndpointDraft({
+      name: endpoint.name,
+      kind: endpoint.kind,
+      baseUrl: endpoint.baseUrl,
+      model: endpoint.model ?? '',
+      apiKey: endpoint.apiKey ?? '',
+    });
+    setEditingEndpointId(endpoint.id);
+    setEndpointTestResult('');
+  };
+
+  const updateEndpointDraft = (patch: Partial<EndpointDraft>) => {
+    setEndpointDraft((current) => ({ ...current, ...patch }));
+    setEndpointTestResult('');
+  };
+
+  const canSubmitEndpoint =
+    endpointDraft.name.trim().length > 0 &&
+    endpointDraft.baseUrl.trim().length > 0 &&
+    (endpointDraft.kind === 'emm' || endpointDraft.model.trim().length > 0);
+
+  const useEndpoint = (endpoint: TranslationEndpoint) => {
+    saveEndpoint({ ...endpoint, enabled: true });
+    setActiveEndpointId(endpoint.id);
+    refreshEndpoints();
+  };
+
+  const handleDeleteEndpoint = (id: string) => {
+    deleteEndpoint(id);
+    if (editingEndpointId === id) {
+      setEditingEndpointId(undefined);
+      setEndpointTestResult('');
+    }
+    refreshEndpoints();
+  };
+
+  const handleSaveEndpoint = () => {
+    if (!canSubmitEndpoint) return;
+    const id =
+      typeof editingEndpointId === 'string'
+        ? editingEndpointId
+        : typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `translation-endpoint-${Date.now()}`;
+    const endpoint: TranslationEndpoint = {
+      id,
+      name: endpointDraft.name.trim(),
+      kind: endpointDraft.kind,
+      baseUrl: endpointDraft.baseUrl.trim(),
+      ...(endpointDraft.model.trim() ? { model: endpointDraft.model.trim() } : {}),
+      ...(endpointDraft.apiKey.trim() ? { apiKey: endpointDraft.apiKey.trim() } : {}),
+      enabled: true,
+    };
+    saveEndpoint(endpoint);
+    setActiveEndpointId(endpoint.id);
+    refreshEndpoints();
+    setEditingEndpointId(undefined);
+    setEndpointTestResult('');
+  };
+
+  const resolvedActiveEndpointId = endpoints.some(
+    (endpoint) => endpoint.id === activeEndpointId && endpoint.enabled,
+  )
+    ? activeEndpointId
+    : (endpoints.find((endpoint) => endpoint.enabled)?.id ?? null);
+
+  // One tiny request through the draft's kind: `/styles` for the local
+  // service, a `ping` chat completion for an OpenAI-compatible endpoint.
+  const handleTestEndpoint = async () => {
+    if (!canSubmitEndpoint) return;
+    setEndpointTesting(true);
+    setEndpointTestResult('');
+    const started = Date.now();
+    const baseUrl = endpointDraft.baseUrl.trim().replace(/\/+$/, '');
+    const fetch = window.fetch.bind(window);
+    try {
+      let response: Response;
+      if (endpointDraft.kind === 'emm') {
+        response = await fetch(`${baseUrl}/styles`);
+      } else {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (endpointDraft.apiKey.trim()) {
+          headers['Authorization'] = `Bearer ${endpointDraft.apiKey.trim()}`;
+        }
+        response = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            model: endpointDraft.model.trim(),
+            temperature: 0,
+            stream: false,
+            messages: [{ role: 'user', content: 'ping' }],
+          }),
+        });
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setEndpointTestResult(`可用 · ${Date.now() - started}ms`);
+    } catch (failure) {
+      setEndpointTestResult(`失败：${messageOf(failure)}`);
+    } finally {
+      setEndpointTesting(false);
     }
   };
 
@@ -358,6 +520,163 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
             </button>
           </div>
         </section>
+
+        {LOCAL_UNLOCK && (
+          <section>
+            <h3 className='text-sm font-medium'>翻译端点</h3>
+            {endpoints.length === 0 && editingEndpointId === undefined && (
+              <p className='mt-2 text-sm opacity-60'>默认使用本机专家服务</p>
+            )}
+            <div className='mt-2 space-y-1.5'>
+              {endpoints.map((endpoint) => {
+                const isActive = endpoint.id === resolvedActiveEndpointId;
+                return (
+                  <div
+                    key={endpoint.id}
+                    data-testid={`translation-endpoint-${endpoint.id}`}
+                    className='flex items-center gap-2 rounded-field border border-base-content/10 bg-base-200/50 px-3 py-2'
+                  >
+                    <div className='min-w-0 flex-1'>
+                      <p className='truncate text-sm'>
+                        {endpoint.name} ·{' '}
+                        {endpoint.kind === 'openai-compatible'
+                          ? 'OpenAI 兼容'
+                          : '本机专家服务'}{' '}
+                        · {hostOf(endpoint.baseUrl)}
+                      </p>
+                    </div>
+                    <div className='flex shrink-0 items-center gap-1'>
+                      {isActive ? (
+                        <span className='badge badge-sm badge-outline'>使用中</span>
+                      ) : (
+                        <button
+                          className='btn btn-ghost btn-xs eink-bordered'
+                          aria-label={`启用 ${endpoint.name}`}
+                          onClick={() => useEndpoint(endpoint)}
+                        >
+                          启用
+                        </button>
+                      )}
+                      <button
+                        className='btn btn-ghost btn-xs eink-bordered'
+                        aria-label={`编辑 ${endpoint.name}`}
+                        onClick={() => openEditEndpoint(endpoint)}
+                      >
+                        编辑
+                      </button>
+                      <button
+                        className='btn btn-ghost btn-xs eink-bordered text-error'
+                        aria-label={`删除 ${endpoint.name}`}
+                        onClick={() => handleDeleteEndpoint(endpoint.id)}
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className='mt-2'>
+              {editingEndpointId === undefined ? (
+                <button
+                  className='btn btn-ghost btn-sm eink-bordered w-full'
+                  onClick={openNewEndpoint}
+                >
+                  添加端点
+                </button>
+              ) : (
+                <div className='space-y-2' data-testid='translation-endpoint-form'>
+                  <label className='flex flex-col gap-1 text-sm'>
+                    <span>名称</span>
+                    <input
+                      className='input input-bordered input-sm eink-bordered w-full text-sm'
+                      value={endpointDraft.name}
+                      onChange={(event) => updateEndpointDraft({ name: event.target.value })}
+                      placeholder='本机专家服务'
+                    />
+                  </label>
+                  <label className='flex flex-col gap-1 text-sm'>
+                    <span>类型</span>
+                    <select
+                      className='select select-bordered select-sm eink-bordered w-full text-sm'
+                      value={endpointDraft.kind}
+                      onChange={(event) =>
+                        updateEndpointDraft({
+                          kind: event.target.value as TranslationEndpointKind,
+                        })
+                      }
+                    >
+                      <option value='emm'>本机专家服务</option>
+                      <option value='openai-compatible'>OpenAI 兼容</option>
+                    </select>
+                  </label>
+                  <label className='flex flex-col gap-1 text-sm'>
+                    <span>Base URL</span>
+                    <input
+                      className='input input-bordered input-sm eink-bordered w-full text-sm'
+                      value={endpointDraft.baseUrl}
+                      onChange={(event) => updateEndpointDraft({ baseUrl: event.target.value })}
+                      placeholder='http://127.0.0.1:8790'
+                    />
+                  </label>
+                  <label className='flex flex-col gap-1 text-sm'>
+                    <span>模型</span>
+                    <input
+                      className='input input-bordered input-sm eink-bordered w-full text-sm'
+                      value={endpointDraft.model}
+                      onChange={(event) => updateEndpointDraft({ model: event.target.value })}
+                      placeholder='deepseek-chat（OpenAI 兼容时必填）'
+                    />
+                  </label>
+                  <label className='flex flex-col gap-1 text-sm'>
+                    <span>API Key</span>
+                    <input
+                      type='password'
+                      className='input input-bordered input-sm eink-bordered w-full text-sm'
+                      value={endpointDraft.apiKey}
+                      onChange={(event) => updateEndpointDraft({ apiKey: event.target.value })}
+                      placeholder='可选'
+                      autoComplete='off'
+                    />
+                  </label>
+
+                  {endpointTestResult && (
+                    <p className='break-words text-sm opacity-70' role='status'>
+                      {endpointTestResult}
+                    </p>
+                  )}
+
+                  <div className='flex flex-wrap items-center justify-end gap-2'>
+                    <button
+                      className='btn btn-ghost btn-sm eink-bordered'
+                      onClick={() => void handleTestEndpoint()}
+                      disabled={!canSubmitEndpoint || endpointTesting}
+                    >
+                      {endpointTesting ? '测试中…' : '测试'}
+                    </button>
+                    <button
+                      className='btn btn-ghost btn-sm eink-bordered'
+                      onClick={() => {
+                        setEditingEndpointId(undefined);
+                        setEndpointTestResult('');
+                      }}
+                    >
+                      取消
+                    </button>
+                    <button
+                      className='btn btn-contrast btn-sm'
+                      onClick={handleSaveEndpoint}
+                      disabled={!canSubmitEndpoint}
+                    >
+                      保存
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </div>
 
       <div className='border-t border-base-content/10 px-4 py-3'>

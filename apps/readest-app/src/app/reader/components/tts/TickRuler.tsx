@@ -49,10 +49,11 @@ const TickRuler = ({
   const current = dragValue ?? value;
   const activeIndex = Math.min(ticks.length - 1, Math.max(0, Math.round((current - min) / step)));
   const toPct = (v: number) => ((Math.min(Math.max(v, min), max) - min) / range) * 100;
-  // A mark hides when the bright value label would overlap it: within 8% of
-  // the range, compared in step units so float error can't hide the mark one
-  // step too early (2.0 - 1.8 is 0.1999...).
-  const hideSteps = Math.round((range * 0.08) / step);
+  // A mark hides when the bright value label would overlap it. The window is
+  // the smaller of 8% of the range and 0.12 value units: the cap matters now
+  // that the speed ruler spans 0.5-4 (8% would be 0.28 and would swallow the
+  // neighbouring 0.5 gap mark, e.g. 2.0 while the value reads 1.8).
+  const hideWindow = Math.min(range * 0.08, 0.12);
   const isMark = (tick: number) =>
     marks.some((m) => Math.round(m * 100) === Math.round(tick * 100));
 
@@ -86,7 +87,7 @@ const TickRuler = ({
               key={mark}
               className={clsx(
                 'text-base-content/50 absolute top-0 -translate-x-1/2 text-xs tabular-nums',
-                Math.round(Math.abs(mark - current) / step) < hideSteps && 'invisible',
+                Math.abs(mark - current) < hideWindow && 'invisible',
               )}
               style={{ left: `${toPct(mark)}%` }}
             >
