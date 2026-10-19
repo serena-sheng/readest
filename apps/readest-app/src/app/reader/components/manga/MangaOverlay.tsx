@@ -22,6 +22,8 @@ const GUTTER_MIN_WIDTH = 150;
 const GUTTER_MAX_WIDTH = 300;
 const MIN_DANMAKU_IMAGE_WIDTH = 120;
 const DANMAKU_FONT_SIZE = 14;
+const NARROW_DANMAKU_FONT_SIZE = 12;
+const NARROW_GUTTER_WIDTH = 90;
 const DANMAKU_LINE_HEIGHT = 1.35;
 const DANMAKU_GAP = 6;
 const CHIP_PADDING_X = 6;
@@ -42,24 +44,100 @@ export interface MangaOverlayProps {
 
 type DanmakuSide = 'left' | 'right';
 
+/** `clamp(parentWidth * 0.2, 150, 300)` — the preferred gutter width. */
+const computeNaturalGutterWidth = (parentWidth: number): number =>
+  Math.min(
+    Math.max(Math.round(parentWidth * GUTTER_RATIO), GUTTER_MIN_WIDTH),
+    GUTTER_MAX_WIDTH,
+  );
+
 /**
- * Width of one side gutter for a container of `parentWidth`:
- * `clamp(parentWidth * 0.2, 150, 300)`, then narrowed so the image keeps
- * MIN_DANMAKU_IMAGE_WIDTH, and never below a quarter-width floor on very
- * narrow containers. This is the reference implementation's formula.
+ * Width of one side gutter when the image has to make room for it:
+ * the natural gutter, narrowed so the page image keeps at least
+ * MIN_DANMAKU_IMAGE_WIDTH. Used for containers too narrow to already have
+ * blank space beside the image.
  */
 export const computeMangaGutterWidth = (parentWidth: number): number => {
   if (!Number.isFinite(parentWidth) || parentWidth <= 0) return 0;
 
-  const naturalGutter = Math.min(
-    Math.max(Math.round(parentWidth * GUTTER_RATIO), GUTTER_MIN_WIDTH),
-    GUTTER_MAX_WIDTH,
-  );
+  const naturalGutter = computeNaturalGutterWidth(parentWidth);
   const maxGutterByFit = Math.max(0, Math.floor((parentWidth - MIN_DANMAKU_IMAGE_WIDTH) / 2));
-  return Math.max(
-    Math.min(naturalGutter, maxGutterByFit),
-    Math.min(GUTTER_MIN_WIDTH, Math.floor(parentWidth / 4)),
-  );
+  return Math.min(naturalGutter, maxGutterByFit);
+};
+
+/** Geometry the danmaku gutters are positioned against. */
+interface DanmakuGeometry {
+  /** Width available in the parent's padding box. */
+  parentWidth: number;
+  /** Image box relative to the parent's padding box. */
+  imageLeft: number;
+  imageTop: number;
+  imageWidth: number;
+  imageHeight: number;
+  gutterWidth: number;
+  leftGutterLeft: number;
+  rightGutterLeft: number;
+  /** True when the image had to be narrowed to make room for the gutters. */
+  narrow: boolean;
+}
+
+/**
+ * Lay out the gutters against the image's *rendered* box rather than the
+ * container. Blank space already beside the image is used as-is (never narrow
+ * an image that already has room); otherwise the image is narrowed by exactly
+ * the gutter widths and the gutters hug the container edges.
+ */
+const computeDanmakuGeometry = (
+  parentRect: { width: number; left: number; top: number },
+  imageRect: { width: number; height: number; left: number; top: number },
+  parentWidth: number,
+  clientLeft: number,
+  clientTop: number,
+): DanmakuGeometry => {
+  const imageLeft = imageRect.left - parentRect.left - clientLeft;
+  const imageTop = imageRect.top - parentRect.top - clientTop;
+  const sideSpace = Math.max(0, (parentRect.width - imageRect.width) / 2);
+  const naturalGutter = computeNaturalGutterWidth(parentWidth);
+  const narrow = sideSpace < GUTTER_MIN_WIDTH;
+
+  if (!narrow) {
+    // Existing blank space is enough: put the gutters in it, flush with the
+    // image edges, and leave the image untouched.
+    const gutterWidth = Math.min(naturalGutter, sideSpace);
+    return {
+      parentWidth,
+      imageLeft,
+      imageTop,
+      imageWidth: imageRect.width,
+      imageHeight: imageRect.height,
+      gutterWidth,
+      leftGutterLeft: Math.max(0, imageLeft - gutterWidth),
+      rightGutterLeft: Math.max(imageLeft + imageRect.width, 0),
+      narrow: false,
+    };
+  }
+
+  const gutterWidth = computeMangaGutterWidth(parentWidth);
+  const available = Math.max(parentWidth - gutterWidth * 2, MIN_DANMAKU_IMAGE_WIDTH);
+  const imageWidth = Math.min(imageRect.width, available);
+  const narrowed = imageWidth < imageRect.width;
+  const imageHeight =
+    narrowed && imageRect.width > 0
+      ? imageRect.height * (imageWidth / imageRect.width)
+      : imageRect.height;
+  // Equal margins on both sides keep an originally centred image centred.
+  const narrowedLeft = imageLeft + (imageRect.width - imageWidth) / 2;
+  return {
+    parentWidth,
+    imageLeft: narrowedLeft,
+    imageTop,
+    imageWidth,
+    imageHeight,
+    gutterWidth,
+    leftGutterLeft: 0,
+    rightGutterLeft: Math.max(parentWidth - gutterWidth, narrowedLeft + imageWidth),
+    narrow: true,
+  };
 };
 
 /**
@@ -67,11 +145,15 @@ export const computeMangaGutterWidth = (parentWidth: number): number => {
  * the first paint). Chips have a fixed font size and line height, so counting
  * wrapped lines is enough.
  */
-export const estimateMangaDanmakuChipHeight = (text: string, gutterWidth: number): number => {
+export const estimateMangaDanmakuChipHeight = (
+  text: string,
+  gutterWidth: number,
+  fontSize: number = DANMAKU_FONT_SIZE,
+): number => {
   const innerWidth = Math.max(1, gutterWidth - CHIP_PADDING_X * 2 - CHIP_BORDER_LEFT);
-  const charsPerLine = Math.max(1, Math.floor(innerWidth / DANMAKU_FONT_SIZE));
+  const charsPerLine = Math.max(1, Math.floor(innerWidth / fontSize));
   const lines = Math.max(1, Math.ceil(Array.from(text).length / charsPerLine));
-  return lines * DANMAKU_FONT_SIZE * DANMAKU_LINE_HEIGHT + CHIP_PADDING_Y * 2;
+  return lines * fontSize * DANMAKU_LINE_HEIGHT + CHIP_PADDING_Y * 2;
 };
 
 interface OverlayFrame {
@@ -214,17 +296,9 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
 
     const doc = imageEl.ownerDocument;
     const view = doc.defaultView;
-    const parentRect = parent.getBoundingClientRect();
-    const parentWidth = parent.clientWidth || parentRect.width || 0;
-    const gutterWidth = computeMangaGutterWidth(parentWidth);
-    if (gutterWidth <= 0) return;
 
     const naturalWidth = imageEl.naturalWidth || result.width || 1;
     const naturalHeight = imageEl.naturalHeight || result.height || 1;
-    const initialWidth = imageEl.getBoundingClientRect().width;
-    const availableWidth = Math.max(parentWidth - gutterWidth * 2, MIN_DANMAKU_IMAGE_WIDTH);
-    // Only ever narrow, never enlarge: a small image keeps its own width.
-    const shouldShrink = initialWidth > 0 && availableWidth < initialWidth;
 
     const style = imageEl.style;
     const original = {
@@ -259,19 +333,40 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       }
     };
 
-    const applyNarrow = () => {
-      restoreImage();
-      if (shouldShrink) {
-        style.setProperty('width', `${availableWidth}px`);
+    // Always measure the page's *own* layout: restoring first keeps our own
+    // narrowing from being mistaken for blank space on the next pass.
+    const measureGeometry = (): DanmakuGeometry => {
+      const parentRect = parent.getBoundingClientRect();
+      const imageRect = imageEl.getBoundingClientRect();
+      const parentWidth = parent.clientWidth || parentRect.width || 0;
+      return computeDanmakuGeometry(
+        parentRect,
+        imageRect,
+        parentWidth,
+        parent.clientLeft,
+        parent.clientTop,
+      );
+    };
+
+    const applyNarrow = (geometry: DanmakuGeometry) => {
+      if (!geometry.narrow) return;
+      const currentWidth = imageEl.getBoundingClientRect().width;
+      if (geometry.imageWidth < currentWidth) {
+        style.setProperty('width', `${geometry.imageWidth}px`);
         style.setProperty('max-width', 'none');
         style.setProperty('height', 'auto');
       }
       // The gutters sit at the container edges, so the image must reserve a
       // gutter's width on each side even when it was not narrowed.
-      style.setProperty('margin-left', `${gutterWidth}px`);
-      style.setProperty('margin-right', `${gutterWidth}px`);
+      style.setProperty('margin-left', `${geometry.gutterWidth}px`);
+      style.setProperty('margin-right', `${geometry.gutterWidth}px`);
     };
-    applyNarrow();
+
+    restoreImage();
+    const initialGeometry = measureGeometry();
+    if (initialGeometry.gutterWidth <= 0) return;
+    applyNarrow(initialGeometry);
+    const initialGutterWidth = initialGeometry.gutterWidth;
 
     const makeGutter = (side: DanmakuSide): HTMLDivElement => {
       const gutter = doc.createElement('div');
@@ -285,7 +380,7 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       gutter.style.overflowY = 'visible';
       gutter.style.pointerEvents = 'none';
       gutter.style.zIndex = '3';
-      gutter.style.width = `${gutterWidth}px`;
+      gutter.style.width = `${initialGutterWidth}px`;
       layerEl.appendChild(gutter);
       return gutter;
     };
@@ -315,14 +410,18 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       chip.style.lineHeight = `${DANMAKU_LINE_HEIGHT}`;
       // White glass with a magenta spine, legible over any manga artwork.
       chip.style.color = '#3A2230';
-      chip.style.background = 'rgba(255, 255, 255, 0.9)';
+      chip.style.background = isDarkMode
+        ? 'rgba(255, 255, 255, 0.94)'
+        : 'rgba(255, 255, 255, 0.9)';
       chip.style.backdropFilter = 'blur(10px)';
       chip.style.setProperty('-webkit-backdrop-filter', 'blur(10px)');
       chip.style.borderLeft = `${CHIP_BORDER_LEFT}px solid #F0457E`;
       chip.style.boxShadow = '0 1px 4px rgba(0, 0, 0, 0.18)';
       chip.style.borderRadius = '6px';
       chip.style.padding = `${CHIP_PADDING_Y}px ${CHIP_PADDING_X}px`;
-      chip.style.overflowWrap = 'break-word';
+      chip.style.maxHeight = 'none';
+      chip.style.overflow = 'visible';
+      chip.style.overflowWrap = 'anywhere';
       chip.style.whiteSpace = 'pre-wrap';
       chip.style.pointerEvents = 'none';
       gutters[side].appendChild(chip);
@@ -347,7 +446,7 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       hint.dataset['side'] = side;
       hint.dataset['edge'] = edge;
       hint.style.position = 'absolute';
-      hint.style.width = `${gutterWidth}px`;
+      hint.style.width = `${initialGutterWidth}px`;
       hint.style.height = `${SCROLL_HINT_HEIGHT}px`;
       hint.style.display = 'none';
       hint.style.pointerEvents = 'none';
@@ -390,26 +489,61 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
     };
 
     const layout = () => {
-      const currentParentRect = parent.getBoundingClientRect();
-      const imageRect = imageEl.getBoundingClientRect();
-      const offsetY = imageRect.top - currentParentRect.top - parent.clientTop;
-      const renderedHeight = Math.max(0, imageRect.height);
-      const containerWidth = parent.clientWidth || currentParentRect.width || parentWidth;
+      restoreImage();
+      const geometry = measureGeometry();
+      applyNarrow(geometry);
+      if (geometry.narrow) {
+        // A real browser lays the image out synchronously on the next rect
+        // read; trust that over our centring estimate whenever it reflects the
+        // requested width. jsdom keeps its mock, so the estimate stands there.
+        const parentRect = parent.getBoundingClientRect();
+        const appliedRect = imageEl.getBoundingClientRect();
+        if (Math.abs(appliedRect.width - geometry.imageWidth) < 1) {
+          geometry.imageLeft = appliedRect.left - parentRect.left - parent.clientLeft;
+          geometry.imageTop = appliedRect.top - parentRect.top - parent.clientTop;
+          geometry.imageWidth = appliedRect.width;
+          geometry.imageHeight = appliedRect.height;
+          geometry.rightGutterLeft = Math.max(
+            geometry.parentWidth - geometry.gutterWidth,
+            geometry.imageLeft + geometry.imageWidth,
+          );
+        }
+      }
+      const { gutterWidth } = geometry;
+      if (gutterWidth <= 0) return;
 
-      gutters.left.style.top = `${offsetY}px`;
-      gutters.left.style.height = `${renderedHeight}px`;
-      gutters.left.style.left = '0px';
-      gutters.right.style.top = `${offsetY}px`;
-      gutters.right.style.height = `${renderedHeight}px`;
-      gutters.right.style.left = `${Math.max(containerWidth - gutterWidth, 0)}px`;
+      const renderedHeight = Math.max(0, geometry.imageHeight);
+      const narrowGutter = gutterWidth < NARROW_GUTTER_WIDTH;
+      const chipFontSize = narrowGutter ? NARROW_DANMAKU_FONT_SIZE : DANMAKU_FONT_SIZE;
+      const chipBorderWidth = narrowGutter ? 2 : CHIP_BORDER_LEFT;
+      const gutterLeft: Record<DanmakuSide, number> = {
+        left: geometry.leftGutterLeft,
+        right: geometry.rightGutterLeft,
+      };
 
       (['left', 'right'] as const).forEach((side) => {
-        const hintLeft = side === 'left' ? 0 : Math.max(containerWidth - gutterWidth, 0);
-        hints[side].top.style.top = `${offsetY}px`;
-        hints[side].top.style.left = `${hintLeft}px`;
-        hints[side].bottom.style.top = `${offsetY + renderedHeight - SCROLL_HINT_HEIGHT}px`;
-        hints[side].bottom.style.left = `${hintLeft}px`;
+        const gutter = gutters[side];
+        gutter.style.width = `${gutterWidth}px`;
+        gutter.style.top = `${geometry.imageTop}px`;
+        gutter.style.height = `${renderedHeight}px`;
+        gutter.style.left = `${gutterLeft[side]}px`;
 
+        hints[side].top.style.width = `${gutterWidth}px`;
+        hints[side].top.style.left = `${gutterLeft[side]}px`;
+        hints[side].top.style.top = `${geometry.imageTop}px`;
+        hints[side].bottom.style.width = `${gutterWidth}px`;
+        hints[side].bottom.style.left = `${gutterLeft[side]}px`;
+        hints[side].bottom.style.top = `${
+          geometry.imageTop + renderedHeight - SCROLL_HINT_HEIGHT
+        }px`;
+      });
+
+      items.forEach((item) => {
+        item.el.style.fontSize = `${chipFontSize}px`;
+        item.el.style.borderLeftWidth = `${chipBorderWidth}px`;
+      });
+
+      (['left', 'right'] as const).forEach((side) => {
         const sideItems = items
           .filter((item) => item.side === side)
           .sort((a, b) => a.anchor - b.anchor);
@@ -420,7 +554,8 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
           let bottom = Number.NEGATIVE_INFINITY;
           sideItems.forEach((item) => {
             const chipHeight =
-              item.el.offsetHeight || estimateMangaDanmakuChipHeight(item.text, gutterWidth);
+              item.el.offsetHeight ||
+              estimateMangaDanmakuChipHeight(item.text, gutterWidth, chipFontSize);
             const centered = (item.anchor / naturalHeight) * renderedHeight - chipHeight / 2;
             const top = Math.max(centered, bottom + DANMAKU_GAP);
             item.el.style.top = `${top}px`;
@@ -463,7 +598,7 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       hints.right.bottom.remove();
       restoreImage();
     };
-  }, [imageEl, layerEl, mode, result, bubbleCount]);
+  }, [imageEl, layerEl, mode, result, bubbleCount, isDarkMode]);
 
   if (bubbleCount === 0 || !layerEl) return null;
   if (mode === 'danmaku') return null;
