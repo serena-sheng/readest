@@ -70,7 +70,8 @@ class ImmediateIntersectionObserver {
 }
 
 const BOOK_KEY = 'book-key';
-const keyFor = (text: string) => makeTranslationKey(BOOK_KEY, 'EN', 'deepl|', text);
+// The scope now carries the glossary revision (`|g0` with no stored glossary).
+const keyFor = (text: string) => makeTranslationKey(BOOK_KEY, 'EN', 'deepl||g0', text);
 
 const createView = (paragraphs: string[]) => {
   const view = document.createElement('div');

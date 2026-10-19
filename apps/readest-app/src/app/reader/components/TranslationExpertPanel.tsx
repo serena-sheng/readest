@@ -23,6 +23,11 @@ import {
   type TranslationEndpoint,
   type TranslationEndpointKind,
 } from '@/services/translators/endpoints';
+import {
+  getGlossaryText,
+  parseGlossary,
+  setGlossaryText,
+} from '@/services/translators/glossary';
 import { eventDispatcher } from '@/utils/event';
 import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 
@@ -92,6 +97,11 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
   const [styleId, setStyleId] = useState(getActiveStyle);
   const [glossary, setGlossary] = useState('');
   const [savedGlossary, setSavedGlossary] = useState('');
+  // The local glossary is independent of the expert scratch glossary above:
+  // this one is persisted here and folded into cloud-endpoint prompts.
+  const [localGlossary, setLocalGlossary] = useState(getGlossaryText);
+  const [savedLocalGlossary, setSavedLocalGlossary] = useState(getGlossaryText);
+  const [localGlossarySaved, setLocalGlossarySaved] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -136,6 +146,9 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
   useEffect(() => {
     if (!open) return;
     setStyleId(getActiveStyle());
+    setLocalGlossary(getGlossaryText());
+    setSavedLocalGlossary(getGlossaryText());
+    setLocalGlossarySaved(false);
     setEndpoints(listEndpoints());
     setActiveEndpointIdState(getActiveEndpointId());
     void loadStyles();
@@ -167,6 +180,7 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
     const at = line.indexOf('=');
     return at > 0 && line.slice(0, at).trim().length > 0 && line.slice(at + 1).trim().length > 0;
   }).length;
+  const localGlossaryCount = Object.keys(parseGlossary(localGlossary)).length;
 
   /** Every pick rewrites the provider's key immediately. */
   const applyStyle = (nextStyleId: string) => {
@@ -228,6 +242,19 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
     } finally {
       setBinding(false);
     }
+  };
+
+  /**
+   * Persist the local glossary. The revision bump inside `setGlossaryText`
+   * changes every translation cache key, so saving the same text twice is
+   * avoided: only a real edit is written.
+   */
+  const saveLocalGlossary = () => {
+    if (localGlossary !== savedLocalGlossary) {
+      setGlossaryText(localGlossary);
+      setSavedLocalGlossary(localGlossary);
+    }
+    setLocalGlossarySaved(true);
   };
 
   const refreshEndpoints = () => {
@@ -522,8 +549,42 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
         </section>
 
         {LOCAL_UNLOCK && (
-          <section>
-            <h3 className='text-sm font-medium'>翻译端点</h3>
+          <>
+            <section>
+              <h3 className='text-sm font-medium'>本地术语表（对云端端点生效）</h3>
+              <textarea
+                aria-label='本地术语表'
+                className='textarea textarea-bordered mt-2 min-h-24 w-full resize-y text-sm'
+                rows={4}
+                placeholder={'原词=译名，每行一条\nElizabeth=伊丽莎白\nDarcy=达西'}
+                value={localGlossary}
+                onChange={(event) => {
+                  setLocalGlossary(event.target.value);
+                  setLocalGlossarySaved(false);
+                }}
+                onBlur={saveLocalGlossary}
+              />
+              <div className='mt-1.5 flex flex-wrap items-center gap-2 text-[11px]'>
+                <span className='opacity-60'>
+                  {localGlossaryCount} 条 · 仅对 OpenAI 兼容端点生效
+                </span>
+                {localGlossarySaved && (
+                  <span className='opacity-60' role='status'>
+                    已保存
+                  </span>
+                )}
+                <button
+                  className='btn btn-ghost btn-xs ml-auto'
+                  aria-label='保存本地术语表'
+                  onClick={saveLocalGlossary}
+                >
+                  保存
+                </button>
+              </div>
+            </section>
+
+            <section>
+              <h3 className='text-sm font-medium'>翻译端点</h3>
             {endpoints.length === 0 && editingEndpointId === undefined && (
               <p className='mt-2 text-sm opacity-60'>默认使用本机专家服务</p>
             )}
@@ -675,7 +736,8 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
                 </div>
               )}
             </div>
-          </section>
+            </section>
+          </>
         )}
       </div>
 

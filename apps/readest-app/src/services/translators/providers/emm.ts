@@ -1,4 +1,5 @@
 import { getActiveEndpoint } from '../endpoints';
+import { getGlossary } from '../glossary';
 import { contractFor, systemPromptFor, translateRequest } from '../prompts';
 import { TranslationProvider } from '../types';
 
@@ -171,6 +172,10 @@ export const emmProvider: TranslationProvider = {
         headers['Authorization'] = `Bearer ${endpoint.apiKey.trim()}`;
       }
       const style = readStyle();
+      // The local service parses its own glossary from the bound expert; a
+      // cloud chat endpoint has no such channel, so the reader's local glossary
+      // is folded into the system prompt here.
+      const glossary = getGlossary();
       const response = await postJson(
         url,
         {
@@ -178,7 +183,7 @@ export const emmProvider: TranslationProvider = {
           temperature: 0.4,
           stream: false,
           messages: [
-            { role: 'system', content: systemPromptFor(style) },
+            { role: 'system', content: systemPromptFor(style, glossary) },
             { role: 'user', content: translateRequest(requestTexts, '简体中文', contractFor(style)) },
           ],
         },

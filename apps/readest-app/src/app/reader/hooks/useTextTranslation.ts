@@ -17,6 +17,7 @@ import {
   sanitizeTranslatedMarkup,
   splitMarkupIntoChunks,
 } from '@/app/reader/utils/translationMarkup';
+import { withGlossaryRevision } from '@/services/translators/glossary';
 import { splitTextIntoChunks } from '@/services/translators/utils';
 import {
   estimateScreenChars,
@@ -291,7 +292,10 @@ export function useTextTranslation(
   const translationScopeRef = useRef({ targetLang: '', style: '' });
   translationScopeRef.current = {
     targetLang: targetLang || getLocale(),
-    style: `${provider ?? ''}|${promptId ?? ''}`,
+    // The glossary revision is part of the scope: editing a term changes every
+    // key, so cached paragraphs translated under the old terms miss instead of
+    // being reused. Nothing is cleared; the old entries age out.
+    style: withGlossaryRevision(`${provider ?? ''}|${promptId ?? ''}`),
   };
   // Progress feedback: counts paragraphs handed to the provider versus ones
   // that finished (cached hits and failures included), so the hint can show
