@@ -25,6 +25,9 @@ export type TTSVoice = {
   // not, so the picker omits the field instead of guessing from the name.
   gender?: 'male' | 'female';
   disabled?: boolean;
+  // A one-line engine-authored note ("女声，语速平稳…"), shown in the picker's
+  // meta line in place of the generic language/gender/engine summary.
+  description?: string;
   // Premium voices: the plan that unlocks them, shown as a badge.
   tier?: 'plus' | 'pro';
   // A trait the engine spells into the voice id, shown as a badge instead of

@@ -11,6 +11,25 @@
 // base/rate^1.6, which is 0.60s at 0.5x and 0.085s at 2x (#5750).
 const RATE_EXPONENT = 0.6;
 
+// Natural pause between sentences at 1.0x, replacing the silence Edge bakes
+// into every utterance: measured at ~0.18s leading and ~0.8s trailing, so ~1s
+// of dead air per sentence if it is played as-is (see #5414). The rate scaling
+// happens once, before the value reaches the client; what reaches it is
+// wall-clock seconds of silence. The native path only cuts the trailing
+// silence, so its audible gap also carries the next utterance's ~0.18s of
+// leading silence.
+export const DEFAULT_SENTENCE_GAP_SEC = 0.15;
+
+// Silence inserted between paragraphs when auto-advancing during continuous
+// playback. Unlike the Edge-only inter-sentence gap, this applies to every
+// TTS client: the paragraph-to-paragraph transition (stop -> next -> speak)
+// is engine-agnostic, handled entirely in TTSController's #speak()/forward().
+// There is no natural pause here otherwise -- the transition is as fast as the
+// async stop/init overhead allows, which reads as no pause at all. It lives
+// here (not TTSController) so BufferedTTSClient does not import the controller
+// at runtime, which would close the import cycle.
+export const DEFAULT_PARAGRAPH_GAP_SEC = 0.3;
+
 export const scaleGapForRate = (baseGapSec: number, rate: number): number => {
   if (!(rate > 0)) return baseGapSec;
   // Two decimals: the gaps are sub-second by design, so rounding to a whole

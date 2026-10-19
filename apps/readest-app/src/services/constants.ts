@@ -275,6 +275,10 @@ export const DEFAULT_SYSTEM_SETTINGS: Partial<SystemSettings> = {
   icloud: DEFAULT_ICLOUD_SETTINGS,
   aiSettings: DEFAULT_AI_SETTINGS,
 
+  ttsDoubaoAppId: '',
+  ttsDoubaoAccessToken: '',
+  ttsDoubaoCluster: 'volcano_tts',
+
   lastSyncedAtBooks: 0,
   lastSyncedAtConfigs: 0,
   lastSyncedAtNotes: 0,

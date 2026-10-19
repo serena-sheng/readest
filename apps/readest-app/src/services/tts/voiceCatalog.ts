@@ -1,5 +1,9 @@
+import { useSettingsStore } from '@/store/settingsStore';
+import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 import { WebSpeechClient } from './WebSpeechClient';
+import { DOUBAO_VOICES } from './doubaoVoices';
 import { EdgeSpeechProvider } from './providers/edge';
+import { readDoubaoConfig } from './providers/doubao';
 import { TTSUtils } from './TTSUtils';
 import { filterVoiceGroups } from './voiceAvailability';
 import type { TTSVoice, TTSVoicesGroup } from './types';
@@ -23,7 +27,27 @@ export const loadLocalVoiceGroups = async (): Promise<TTSVoicesGroup[]> => {
     loadWebVoices(),
     new EdgeSpeechProvider().getAllVoices(),
   ]);
+  // Doubao needs the reader's own credentials; without them the group is not
+  // listed at all (the settings panel says what to fill in).
+  const doubaoConfigured =
+    LOCAL_UNLOCK && readDoubaoConfig(useSettingsStore.getState().settings) !== null;
+  const doubaoGroup: TTSVoicesGroup[] = doubaoConfigured
+    ? [
+        {
+          id: 'doubao-tts',
+          name: '豆包语音',
+          voices: DOUBAO_VOICES.map(({ id, name, description, lang, gender }) => ({
+            id,
+            name,
+            description,
+            lang,
+            gender,
+          })),
+        },
+      ]
+    : [];
   return filterVoiceGroups([
+    ...doubaoGroup,
     {
       id: 'web-speech-api',
       name: 'Web TTS',

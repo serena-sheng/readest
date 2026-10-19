@@ -548,6 +548,15 @@ export interface SystemSettings {
   translationPrompts?: TranslationPrompt[];
   /** User OpenAI-compatible speech services; synced as `custom_tts`. */
   customTTSServices?: CustomTTSService[];
+  /**
+   * Volcano Engine (Doubao 豆包语音) speech synthesis credentials, entered in
+   * Settings → Read Aloud on a local build. The token is a per-account secret:
+   * never log it or put it in an error message.
+   */
+  ttsDoubaoAppId: string;
+  ttsDoubaoAccessToken: string;
+  /** Synthesis cluster; the public TTS cluster unless the account says otherwise. */
+  ttsDoubaoCluster: string;
   /** Saved sites for the "From Web Browser" import (#5775). Device-local. */
   webSources?: WebSource[];
   metadataSeriesCollapsed: boolean;

@@ -35,6 +35,7 @@ import {
 } from './primitives';
 import CustomTTSServices from './CustomTTSServices';
 import TTSEndpointsSection from './TTSEndpointsSection';
+import TTSDoubaoSection from './TTSDoubaoSection';
 import TTSHighlightStyleEditor, { TTSHighlightStyle } from './theme/TTSHighlightStyleEditor';
 
 const TTSPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }) => {
@@ -242,6 +243,18 @@ const TTSPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }
       </BoxedList>
 
       {LOCAL_UNLOCK && <TTSEndpointsSection />}
+
+      {LOCAL_UNLOCK && (
+        <TTSDoubaoSection
+          onSaved={() => {
+            // Save first makes the new credentials visible to the catalog, so
+            // the group appears (or disappears) without reopening Settings.
+            void loadLocalVoiceGroups()
+              .then((groups) => setVoiceGroups(filterVoiceGroups(groups)))
+              .catch(() => {});
+          }}
+        />
+      )}
 
       {visibleVoiceGroups.length > 0 && (
         <BoxedList

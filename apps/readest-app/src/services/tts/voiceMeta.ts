@@ -23,19 +23,27 @@ export const getVoiceLanguageName = (lang: string): string => {
 
 export const getVoiceEngineName = (_: TranslationFunc, group: TTSVoicesGroup): string => {
   if (group.id === 'edge-tts') return _('Edge');
+  if (group.id === 'doubao-tts') return _('豆包');
   if (SYSTEM_GROUP_IDS[group.id] === true) return _('System');
   return _(group.name);
 };
 
 // The one-line description under the voice name: language · gender · engine.
-// Gender is only shown when the engine supplied it.
+// Gender is only shown when the engine supplied it. A voice with its own
+// description replaces gender with that note (the note already names gender),
+// keeping the row to one readable line.
 export const getVoiceMetaLine = (
   _: TranslationFunc,
   group: TTSVoicesGroup,
   voice: TTSVoice,
 ): string => {
   const gender = voice.gender === 'male' ? _('Male') : voice.gender === 'female' ? _('Female') : '';
-  return [getVoiceLanguageName(voice.lang), gender, getVoiceEngineName(_, group)]
+  return [
+    getVoiceLanguageName(voice.lang),
+    voice.description ? undefined : gender,
+    getVoiceEngineName(_, group),
+    voice.description,
+  ]
     .filter(Boolean)
     .join(' · ');
 };
