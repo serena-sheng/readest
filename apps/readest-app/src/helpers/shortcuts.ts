@@ -48,6 +48,12 @@ const DEFAULT_SHORTCUTS = {
     description: _('Toggle Bookmark'),
     section: 'General',
   },
+  onToggleMangaTranslation: {
+    // Shift+M belongs to TTS highlight; I is mnemonic for image.
+    keys: ['shift+i'],
+    description: _('Toggle Manga Translation'),
+    section: 'General',
+  },
   onToggleTTS: {
     keys: ['t'],
     description: _('Toggle Text to Speech'),

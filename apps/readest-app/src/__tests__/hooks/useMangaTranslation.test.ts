@@ -67,12 +67,12 @@ const dispatchSpy = vi.spyOn(eventDispatcher, 'dispatch');
 // This file keeps the `.ts` name the acceptance command expects, so the
 // harness is built with createElement instead of JSX.
 const Harness = ({ bookKey, pageView }: { bookKey: string; pageView: FoliateView }) => {
-  const { imageEl, result, toggle } = useMangaTranslation(bookKey, pageView);
+  const { imageEl, result, mode, toggle } = useMangaTranslation(bookKey, pageView);
   return React.createElement(
     React.Fragment,
     null,
     React.createElement('button', { onClick: () => void toggle() }, 'toggle'),
-    imageEl && result
+    imageEl && result && mode !== 'off'
       ? React.createElement(MangaOverlay, { imageEl, result })
       : null,
   );
@@ -108,7 +108,7 @@ afterEach(() => {
 });
 
 describe('useMangaTranslation', () => {
-  it('reports a missing vision endpoint and sends nothing', async () => {
+  it('opens the setup guide instead of a toast when the endpoint is missing', async () => {
     getMangaEndpointMock.mockReturnValue(null);
     const { result } = renderHook(() => useMangaTranslation('book-1', view));
 
@@ -117,10 +117,8 @@ describe('useMangaTranslation', () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(translateMock).not.toHaveBeenCalled();
-    expect(dispatchSpy).toHaveBeenCalledWith('toast', {
-      type: 'error',
-      message: '未配置视觉模型端点',
-    });
+    await waitFor(() => expect(result.current.needsModelSetup).toBe(true));
+    expect(dispatchSpy).not.toHaveBeenCalledWith('toast', expect.anything());
   });
 
   it('translates once and mounts the overlay', async () => {
@@ -136,10 +134,8 @@ describe('useMangaTranslation', () => {
     expect(translateMock).toHaveBeenCalledWith(
       expect.objectContaining({ mimeType: 'image/jpeg', width: 800, height: 1200 }),
     );
-    expect(dispatchSpy).toHaveBeenCalledWith('toast', {
-      type: 'success',
-      message: '已翻译 1 处',
-    });
+    // A successful page changes the artwork itself; there is no toast.
+    expect(dispatchSpy).not.toHaveBeenCalledWith('toast', expect.anything());
   });
 
   it('removes the overlay on the second toggle', async () => {

@@ -13,10 +13,10 @@ import { getGlossary } from '@/services/translators/glossary';
 import { useBookProgress } from '@/store/readerProgressStore';
 import { useReaderStore } from '@/store/readerStore';
 import { useEnv } from '@/context/EnvContext';
-import { useTranslation } from '@/hooks/useTranslation';
 import { saveViewSettings } from '@/helpers/settings';
 import { eventDispatcher } from '@/utils/event';
 import type { MangaTranslationMode } from '@/types/book';
+import { computeMangaGutterWidth } from '../components/manga/MangaOverlay';
 
 export type { MangaTranslationMode } from '@/types/book';
 
@@ -30,6 +30,78 @@ export const MIN_MANGA_IMAGE_SHORT_SIDE = 300;
  * instant without spending requests on a book the reader may close.
  */
 export const MANGA_PREFETCH_PAGES = 1;
+
+/** One side gutter must fit about six CJK characters on a line. */
+export const MANGA_DANMAKU_MIN_GUTTER_WIDTH = 88;
+/** Below this the page is no longer readable, whatever the gutter says. */
+export const MANGA_DANMAKU_MIN_IMAGE_WIDTH = 160;
+/** The page must keep at least this share of the reading area's width. */
+export const MANGA_DANMAKU_MIN_IMAGE_RATIO = 0.55;
+/** Taller than this is a long-strip page; side gutters become empty columns. */
+export const MANGA_DANMAKU_MAX_ASPECT_RATIO = 2;
+
+export const MANGA_NARROW_NOTICE = '窗口太窄，已改用嵌字。侧栏需要更宽的页面。';
+
+export type MangaDanmakuBlockedReason = 'narrow' | 'tall';
+
+/** Inline feedback shown in the reading area; never a global toast. */
+export type MangaTranslationStatus =
+  | { kind: 'translating'; startedAt: number }
+  | { kind: 'empty' }
+  | { kind: 'error'; message: string };
+
+export interface MangaDanmakuFitInput {
+  imageWidth: number;
+  imageHeight: number;
+  naturalWidth: number;
+  naturalHeight: number;
+  contentWidth: number;
+}
+
+/**
+ * Whether the side-column layout can hold this page. Measured on the reading
+ * area (the image's container), never on the whole viewport.
+ */
+export const computeMangaDanmakuFit = ({
+  imageWidth,
+  imageHeight,
+  naturalWidth,
+  naturalHeight,
+  contentWidth,
+}: MangaDanmakuFitInput): MangaDanmakuBlockedReason | null => {
+  const width = imageWidth > 0 ? imageWidth : naturalWidth;
+  const height = imageHeight > 0 ? imageHeight : naturalHeight;
+  if (width > 0 && height / width > MANGA_DANMAKU_MAX_ASPECT_RATIO) return 'tall';
+
+  const areaWidth = contentWidth > 0 ? contentWidth : width;
+  if (!(areaWidth > 0)) return null;
+
+  const gutter = computeMangaGutterWidth(areaWidth);
+  if (gutter < MANGA_DANMAKU_MIN_GUTTER_WIDTH) return 'narrow';
+
+  const pageWidth = Math.min(width || areaWidth, areaWidth - gutter * 2);
+  if (pageWidth < Math.max(MANGA_DANMAKU_MIN_IMAGE_WIDTH, areaWidth * MANGA_DANMAKU_MIN_IMAGE_RATIO)) {
+    return 'narrow';
+  }
+  return null;
+};
+
+/**
+ * Map service and transport failures to a sentence a reader can act on. The
+ * server's own text is never shown: it leaks provider names and HTTP jargon.
+ */
+export const mangaErrorReason = (error: unknown, fallback = '出了点问题，再试一次。'): string => {
+  const message = error instanceof Error ? error.message : '';
+  if (/HTTP 401|HTTP 403/.test(message)) return '模型拒绝了密钥，去设置里换一个新的。';
+  if (/HTTP 429/.test(message)) return '请求太频繁，等一下再试。';
+  if (/超时|timeout|timed out/i.test(message)) return '模型很久没有返回结果。';
+  if (/HTTP 413|too large|过大/i.test(message)) return '这一页对模型来说太大了。';
+  if (/响应为空|HTTP 5\d\d/.test(message)) return '出了点问题，再试一次。';
+  if (/图片读取失败|网络|fetch|不可用|Failed to fetch/i.test(message)) {
+    return '网络好像断了，检查后再试。';
+  }
+  return fallback;
+};
 
 const SUPPORTED_MIME_TYPES: Record<string, true> = {
   'image/jpeg': true,
@@ -142,12 +214,6 @@ const readPageImage = async (
   };
 };
 
-const errorDetail = (error: unknown, fallback: string): string => {
-  if (!(error instanceof Error)) return fallback;
-  const detail = error.message.replace(/^manga:\s*/, '');
-  return detail || fallback;
-};
-
 export interface UseMangaTranslationResult {
   /** The current page has an image large enough to translate. */
   available: boolean;
@@ -159,20 +225,41 @@ export interface UseMangaTranslationResult {
   /** Extra fields for rendering; `MangaOverlay` is mounted from these. */
   imageEl: HTMLImageElement | null;
   result: MangaPageResult | null;
+  /** Inline progress / empty / error feedback for the reading area. */
+  status: MangaTranslationStatus | null;
+  /** Why the side-column mode is unavailable on this page; null when it fits. */
+  danmakuDisabledReason: MangaDanmakuBlockedReason | null;
+  /** True when the vision endpoint is missing; the toolbar shows the setup guide. */
+  needsModelSetup: boolean;
   /**
-   * Legacy two-state toggle: off → bubble, any mode → off. Unlike cycleMode,
-   * it clears the result, matching the pre-danmaku behaviour.
+   * Main-button toggle: off → the last non-off mode (bubble when none),
+   * on → off. During a request it cancels instead.
    */
   toggle: () => Promise<void>;
   /** off → bubble (translating once) → danmaku → off. */
   cycleMode: () => Promise<void>;
+  /** Choose one mode directly; `danmaku` degrades to `bubble` when it can't fit. */
+  setMode: (mode: MangaTranslationMode) => Promise<void>;
+  /** Cancel the in-flight page request and clear its status. */
+  stop: () => void;
+  /** Re-run the last page request after a failure. */
+  retry: () => Promise<void>;
+  /** Clear the inline status (used by the empty notice's own timer). */
+  dismissStatus: () => void;
+  /** Dismiss the missing-model guide without changing any mode. */
+  dismissModelSetup: () => void;
+}
+
+export interface UseMangaTranslationOptions {
+  /** Called once per opened book when a too-narrow window forces bubble mode. */
+  onNarrowFallback?: (message: string) => void;
 }
 
 export function useMangaTranslation(
   bookKey: string,
   view: FoliateView | null,
+  options: UseMangaTranslationOptions = {},
 ): UseMangaTranslationResult {
-  const _ = useTranslation();
   const { envConfig } = useEnv();
   const pageLocation = useBookProgress(bookKey)?.location ?? null;
   const [available, setAvailable] = useState(false);
@@ -180,6 +267,10 @@ export function useMangaTranslation(
   const [imageEl, setImageEl] = useState<HTMLImageElement | null>(null);
   const [result, setResult] = useState<MangaPageResult | null>(null);
   const [mode, setModeState] = useState<MangaTranslationMode>('off');
+  const [status, setStatus] = useState<MangaTranslationStatus | null>(null);
+  const [danmakuDisabledReason, setDanmakuDisabledReason] =
+    useState<MangaDanmakuBlockedReason | null>(null);
+  const [needsModelSetup, setNeedsModelSetup] = useState(false);
 
   // Async work reads the mode through a ref: a page effect must not be torn
   // down and re-run every time the overlay mode changes.
@@ -187,12 +278,26 @@ export function useMangaTranslation(
   const loadingRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const prefetchAbortRef = useRef<AbortController | null>(null);
+  // The mode to restore when the main button opens the overlay: turning off
+  // must not forget whether the reader preferred bubble or side columns.
+  const lastModeRef = useRef<MangaTranslationMode>('bubble');
+  const narrowNoticeShownRef = useRef(false);
+  const fitReasonRef = useRef<MangaDanmakuBlockedReason | null>(null);
+  const lastRequestRef = useRef<{
+    image: HTMLImageElement;
+    mode: MangaTranslationMode;
+    persist: boolean;
+  } | null>(null);
+  const onNarrowFallbackRef = useRef(options.onNarrowFallback);
+  onNarrowFallbackRef.current = options.onNarrowFallback;
+
   // Page results the service already produced in this book session. The
   // service has its own persistent cache; this only saves re-reading the image
   // bytes when the reader toggles the overlay off and on again.
   const cacheRef = useRef(new Map<string, MangaPageResult>());
 
   const applyMode = useCallback((next: MangaTranslationMode) => {
+    if (next !== 'off') lastModeRef.current = next;
     modeRef.current = next;
     setModeState(next);
   }, []);
@@ -208,6 +313,46 @@ export function useMangaTranslation(
       void saveViewSettings(envConfig, bookKey, 'mangaTranslationMode', next, true, false);
     },
     [envConfig, bookKey],
+  );
+
+  // The page effect must run on page changes only; persisting goes through a
+  // ref so a fresh `envConfig` object can't re-create the effect's callbacks.
+  const persistModeRef = useRef(persistMode);
+  persistModeRef.current = persistMode;
+
+  /** Measure this page against the reading area and remember the verdict. */
+  const refreshDanmakuFit = useCallback((image: HTMLImageElement) => {
+    const rect = image.getBoundingClientRect();
+    const parent = image.parentElement;
+    const parentWidth = parent?.clientWidth ?? 0;
+    const contentWidth =
+      parentWidth > 0 ? parentWidth : parent?.getBoundingClientRect().width || rect.width;
+    const reason = computeMangaDanmakuFit({
+      imageWidth: rect.width,
+      imageHeight: rect.height,
+      naturalWidth: image.naturalWidth || 0,
+      naturalHeight: image.naturalHeight || 0,
+      contentWidth,
+    });
+    fitReasonRef.current = reason;
+    setDanmakuDisabledReason(reason);
+    return reason;
+  }, []);
+
+  /**
+   * Side columns don't fit: show bubbles instead, write the preference so a
+   * later page doesn't silently flip back, and tell the reader once per book.
+   */
+  const fallBackToBubble = useCallback(
+    (reason: MangaDanmakuBlockedReason) => {
+      applyMode('bubble');
+      persistModeRef.current('bubble');
+      if (reason === 'narrow' && !narrowNoticeShownRef.current) {
+        narrowNoticeShownRef.current = true;
+        onNarrowFallbackRef.current?.(MANGA_NARROW_NOTICE);
+      }
+    },
+    [applyMode],
   );
 
   useEffect(() => {
@@ -312,26 +457,36 @@ export function useMangaTranslation(
     async (
       image: HTMLImageElement,
       desiredMode: MangaTranslationMode,
-      options: { persist?: boolean } = {},
+      requestOptions: { persist?: boolean } = {},
     ) => {
       if (loadingRef.current) return;
+
+      const fit = refreshDanmakuFit(image);
+      if (desiredMode === 'danmaku' && fit) {
+        fallBackToBubble(fit);
+        desiredMode = 'bubble';
+      }
+      lastRequestRef.current = {
+        image,
+        mode: desiredMode,
+        persist: requestOptions.persist ?? false,
+      };
+
       const src = image.currentSrc || image.src;
 
       const endpoint = getMangaEndpoint();
       if (!endpoint) {
-        void eventDispatcher.dispatch('toast', {
-          type: 'error',
-          message: _('未配置视觉模型端点'),
-        });
+        setNeedsModelSetup(true);
         return;
       }
 
       const inMemory = src ? cacheRef.current.get(src) : undefined;
       if (inMemory) {
+        setStatus(null);
         setImageEl(image);
         setResult(inMemory);
         applyMode(desiredMode);
-        if (options.persist) persistMode(desiredMode);
+        if (requestOptions.persist) persistMode(desiredMode);
         schedulePrefetch(image);
         return;
       }
@@ -358,16 +513,17 @@ export function useMangaTranslation(
         if (controller.signal.aborted) return;
         if (cached) {
           cacheRef.current.set(prepared.src, cached);
+          setStatus(null);
           setImageEl(image);
           setResult(cached);
           applyMode(desiredMode);
-          if (options.persist) persistMode(desiredMode);
+          if (requestOptions.persist) persistMode(desiredMode);
           schedulePrefetch(image);
           return;
         }
 
         updateLoading(true);
-        void eventDispatcher.dispatch('toast', { type: 'info', message: _('漫画翻译中…') });
+        setStatus({ kind: 'translating', startedAt: Date.now() });
 
         const page = await translateMangaPage({
           image: prepared.bytes,
@@ -385,26 +541,15 @@ export function useMangaTranslation(
         setImageEl(image);
         setResult(page);
         applyMode(desiredMode);
-        if (options.persist) persistMode(desiredMode);
+        if (requestOptions.persist) persistMode(desiredMode);
 
-        if (page.bubbles.length > 0) {
-          void eventDispatcher.dispatch('toast', {
-            type: 'success',
-            message: _('已翻译 {{count}} 处', { count: page.bubbles.length }),
-          });
-        } else {
-          void eventDispatcher.dispatch('toast', {
-            type: 'info',
-            message: _('本页没有识别到文字'),
-          });
-        }
+        // A successful page is its own feedback. An empty result is not: it
+        // leaves the artwork unchanged, so say so inline for a moment.
+        setStatus(page.bubbles.length > 0 ? null : { kind: 'empty' });
         schedulePrefetch(image);
       } catch (error) {
         if (controller.signal.aborted) return;
-        void eventDispatcher.dispatch('toast', {
-          type: 'error',
-          message: errorDetail(error, _('漫画翻译失败')),
-        });
+        setStatus({ kind: 'error', message: mangaErrorReason(error) });
       } finally {
         if (abortRef.current === controller) {
           abortRef.current = null;
@@ -412,7 +557,15 @@ export function useMangaTranslation(
         }
       }
     },
-    [_, applyMode, bookKey, persistMode, schedulePrefetch, updateLoading],
+    [
+      applyMode,
+      bookKey,
+      fallBackToBubble,
+      persistMode,
+      refreshDanmakuFit,
+      schedulePrefetch,
+      updateLoading,
+    ],
   );
 
   // The page effect starts the automatic translation; keeping it behind a ref
@@ -436,6 +589,7 @@ export function useMangaTranslation(
     prefetchAbortRef.current = null;
     updateLoading(false);
     setResult(null);
+    setStatus(null);
 
     const restoredMode =
       useReaderStore.getState().getViewSettings(bookKey)?.mangaTranslationMode ?? 'off';
@@ -449,11 +603,22 @@ export function useMangaTranslation(
       if (disposed) return false;
       setImageEl(image);
       setAvailable(Boolean(image));
-      if (image && !autoStarted && modeRef.current !== 'off') {
+      if (!image) {
+        setDanmakuDisabledReason(null);
+        return false;
+      }
+
+      const fit = refreshDanmakuFit(image);
+      // A restored side-column preference must not outlive the window that
+      // could hold it: degrade before the automatic translation starts.
+      if (modeRef.current === 'danmaku' && fit) {
+        fallBackToBubble(fit);
+      }
+      if (!autoStarted && modeRef.current !== 'off') {
         autoStarted = true;
         void translatePageRef.current(image, modeRef.current);
       }
-      return Boolean(image);
+      return true;
     };
 
     refresh();
@@ -478,53 +643,105 @@ export function useMangaTranslation(
       timers.forEach((timer) => clearTimeout(timer));
       viewAny?.removeEventListener?.('load', onLoad);
     };
-  }, [applyMode, bookKey, pageLocation, updateLoading, view]);
+  }, [applyMode, bookKey, fallBackToBubble, pageLocation, refreshDanmakuFit, updateLoading, view]);
 
-  /** Translate the current page (once) and show the bubble overlay. */
-  const showTranslation = useCallback(async () => {
-    if (loadingRef.current) return;
+  // A window resize can take the side columns away (or give them back). Only
+  // the removal is acted on: widening never silently flips a reader back.
+  useEffect(() => {
+    const handleResize = () => {
+      const image = pickPageImage(view);
+      if (!image) return;
+      const fit = refreshDanmakuFit(image);
+      if (modeRef.current === 'danmaku' && fit) fallBackToBubble(fit);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [fallBackToBubble, refreshDanmakuFit, view]);
 
-    const image = pickPageImage(view);
-    if (!image) {
-      void eventDispatcher.dispatch('toast', {
-        type: 'warning',
-        message: _('本页没有可翻译的图片'),
-      });
-      return;
-    }
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    prefetchAbortRef.current?.abort();
+    prefetchAbortRef.current = null;
+    updateLoading(false);
+    setStatus(null);
+  }, [updateLoading]);
 
-    await translatePage(image, 'bubble', { persist: true });
-  }, [_, translatePage, view]);
+  const turnOff = useCallback(() => {
+    stop();
+    applyMode('off');
+    // The result stays: re-opening the overlay reuses it without a request.
+    persistMode('off');
+  }, [applyMode, persistMode, stop]);
+
+  const dismissStatus = useCallback(() => setStatus(null), []);
+  const dismissModelSetup = useCallback(() => setNeedsModelSetup(false), []);
+
+  /**
+   * Show `next` for the current page. `off` clears the overlay; other modes
+   * reuse the session cache when possible and otherwise translate once.
+   */
+  const setMode = useCallback(
+    async (next: MangaTranslationMode) => {
+      if (next === 'off') {
+        turnOff();
+        return;
+      }
+      if (loadingRef.current) return;
+
+      const image = pickPageImage(view);
+      if (!image) {
+        setStatus({ kind: 'error', message: '本页没有可翻译的图片' });
+        return;
+      }
+      await translatePage(image, next, { persist: true });
+    },
+    [translatePage, turnOff, view],
+  );
 
   const toggle = useCallback(async () => {
-    if (loadingRef.current) return;
-    if (modeRef.current !== 'off') {
-      abortRef.current?.abort();
-      abortRef.current = null;
-      prefetchAbortRef.current?.abort();
-      prefetchAbortRef.current = null;
-      applyMode('off');
-      setResult(null);
-      persistMode('off');
+    if (loadingRef.current) {
+      stop();
       return;
     }
-    await showTranslation();
-  }, [applyMode, persistMode, showTranslation]);
+    if (modeRef.current !== 'off') {
+      turnOff();
+      return;
+    }
+    await setMode(lastModeRef.current);
+  }, [setMode, stop, turnOff]);
 
   const cycleMode = useCallback(async () => {
     if (loadingRef.current) return;
     if (modeRef.current === 'off') {
-      await showTranslation();
+      await setMode('bubble');
       return;
     }
-    const next: MangaTranslationMode = modeRef.current === 'bubble' ? 'danmaku' : 'off';
-    if (next === 'off') {
-      prefetchAbortRef.current?.abort();
-      prefetchAbortRef.current = null;
+    if (modeRef.current === 'bubble') {
+      await setMode('danmaku');
+      return;
     }
-    applyMode(next);
-    persistMode(next);
-  }, [applyMode, persistMode, showTranslation]);
+    turnOff();
+  }, [setMode, turnOff]);
+
+  const retry = useCallback(async () => {
+    const last = lastRequestRef.current;
+    setStatus(null);
+    if (!last) return;
+    await translatePage(last.image, last.mode, { persist: last.persist });
+  }, [translatePage]);
+
+  // Shift+I is resolved by useBookShortcuts and scoped to the active book.
+  useEffect(() => {
+    const handleToggle = (event: CustomEvent) => {
+      const detail = event.detail as { bookKey?: string } | undefined;
+      if (detail?.bookKey !== bookKey) return false;
+      void toggle();
+      return true;
+    };
+    eventDispatcher.onSync('toggle-manga-translation', handleToggle);
+    return () => eventDispatcher.offSync('toggle-manga-translation', handleToggle);
+  }, [bookKey, toggle]);
 
   return {
     available,
@@ -533,8 +750,16 @@ export function useMangaTranslation(
     mode,
     imageEl,
     result,
+    status,
+    danmakuDisabledReason,
+    needsModelSetup,
     toggle,
     cycleMode,
+    setMode,
+    stop,
+    retry,
+    dismissStatus,
+    dismissModelSetup,
   };
 }
 

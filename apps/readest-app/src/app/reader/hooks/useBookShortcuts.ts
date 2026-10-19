@@ -423,6 +423,15 @@ const useBookShortcuts = ({ sideBarBookKey, bookKeys }: UseBookShortcutsProps) =
     eventDispatcher.dispatch('toggle-bookmark', { bookKey: sideBarBookKey });
   };
 
+  // The manga control owns its session state in the toolbar hook, so the
+  // shortcut only names the active book.
+  const toggleMangaTranslation = () => {
+    if (!sideBarBookKey) return false;
+    return eventDispatcher.dispatchSync('toggle-manga-translation', {
+      bookKey: sideBarBookKey,
+    });
+  };
+
   const toggleParagraphMode = (event?: KeyboardEvent | MessageEvent) => {
     if (!sideBarBookKey) return false;
     if (event instanceof KeyboardEvent && event.repeat) return true;
@@ -480,6 +489,7 @@ const useBookShortcuts = ({ sideBarBookKey, bookKeys }: UseBookShortcutsProps) =
       onToggleNotebook: toggleNotebook,
       onToggleScrollMode: toggleScrollMode,
       onToggleBookmark: toggleBookmark,
+      onToggleMangaTranslation: toggleMangaTranslation,
       onToggleParagraphMode: toggleParagraphMode,
       onStartRSVP: startRSVP,
       onToggleAutoScroll: toggleAutoScroll,
