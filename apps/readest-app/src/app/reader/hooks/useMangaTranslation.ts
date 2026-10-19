@@ -129,6 +129,7 @@ export function useMangaTranslation(
     };
 
     refresh();
+
     const timers = [200, 600, 1200, 2400].map((delay) =>
       setTimeout(() => {
         if (refresh()) timers.forEach((timer) => clearTimeout(timer));

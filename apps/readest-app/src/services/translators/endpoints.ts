@@ -149,15 +149,19 @@ export const getActiveEndpoint = (): TranslationEndpoint => {
  * active endpoint wins when it qualifies, otherwise the first one does.
  */
 export const getMangaEndpoint = (): MangaVisionEndpoint | null => {
-  const candidates = listEndpoints().filter(
-    (endpoint) => endpoint.enabled && Boolean(endpoint.visionModel?.trim()),
-  );
-  if (candidates.length === 0) return null;
+  const enabled = listEndpoints().filter((endpoint) => endpoint.enabled);
+  if (enabled.length === 0) return null;
 
   const activeId = getActiveEndpointId();
-  const endpoint = candidates.find((candidate) => candidate.id === activeId) ?? candidates[0]!;
+  // A dedicated vision model wins, but it is not required: the models people
+  // configure today (DeepSeek chat/flash, GPT-4o, Qwen-VL) accept images on the
+  // same endpoint, and demanding an extra field silently disabled manga
+  // translation for everyone who had only filled the text settings.
+  const withVision = enabled.filter((endpoint) => Boolean(endpoint.visionModel?.trim()));
+  const pool = withVision.length > 0 ? withVision : enabled;
+  const endpoint = pool.find((candidate) => candidate.id === activeId) ?? pool[0]!;
   const baseUrl = endpoint.baseUrl.trim().replace(/\/+$/, '');
-  const model = endpoint.visionModel!.trim();
+  const model = (endpoint.visionModel?.trim() || endpoint.model?.trim()) ?? '';
   if (!baseUrl || !model) return null;
 
   const apiKey = endpoint.apiKey?.trim();
