@@ -104,17 +104,16 @@ describe('MangaTranslateToggler controls', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
-  it('opens a menu with the three display modes and their descriptions', () => {
+  it('opens a menu with the display modes and their descriptions', () => {
     renderToggler();
 
     fireEvent.click(mainButton());
 
     const menu = screen.getByRole('menu');
-    for (const label of ['原始页面', '盖在原文上', '排在两侧']) {
+    for (const label of ['开启漫画翻译', '盖在原文上', '排在两侧']) {
       expect(within(menu).getByText(label)).toBeTruthy();
     }
     for (const description of [
-      '不显示译文',
       '译文直接盖住气泡',
       '译文排在画面左右两栏',
     ]) {
@@ -178,7 +177,7 @@ describe('MangaTranslateToggler controls', () => {
     fireEvent.click(mainButton());
 
     const menu = screen.getByRole('menu');
-    expect(within(menu).getByText('需要更宽的窗口')).toBeTruthy();
+    expect(within(menu).getByText('窗口太窄，放不下两侧译文')).toBeTruthy();
     const row = within(menu).getByText('排在两侧').closest('button');
     expect((row as HTMLButtonElement | null)?.disabled).toBe(true);
   });

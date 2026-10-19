@@ -42,12 +42,14 @@ describe('MangaStatusBar', () => {
     expect(screen.getByText('正在翻译这一页…')).toBeTruthy();
   });
 
-  it('docks fixed above the footer instead of over the top bar', () => {
+  it('docks above the footer instead of over the top bar', () => {
     render(<MangaStatusBar status={{ kind: 'empty' }} />);
 
     const status = screen.getByRole('status');
-    expect(status.className).toContain('fixed');
-    expect(status.className).not.toContain('absolute');
+    // Anchored inside the reader cell, not to the window: the global viewport
+    // centre would drift once the sidebar opens.
+    expect(status.className).toContain('absolute');
+    expect(status.className).not.toContain('fixed');
     expect(status.style.bottom).toBe('56px');
   });
 

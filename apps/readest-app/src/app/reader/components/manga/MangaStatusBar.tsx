@@ -93,7 +93,7 @@ const MangaStatusBar: React.FC<MangaStatusBarProps> = ({ status, onStop, onRetry
     <div
       role={isError ? 'alert' : 'status'}
       data-manga-status={status.kind}
-      className='pointer-events-auto fixed left-1/2 z-[9] flex h-9 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-[10px] px-3 text-sm'
+      className='pointer-events-auto absolute left-1/2 z-[9] flex h-9 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-[10px] px-3 text-sm'
       style={{
         bottom: '56px',
         backgroundColor: 'color-mix(in srgb, var(--color-base-100) 92%, transparent)',

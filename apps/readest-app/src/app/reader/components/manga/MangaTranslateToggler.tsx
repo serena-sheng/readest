@@ -23,7 +23,6 @@ interface MangaTranslateTogglerProps {
 }
 
 const MENU_ITEMS: Array<{ mode: MangaTranslationMode; label: string; description: string }> = [
-  { mode: 'off', label: '原始页面', description: '不显示译文' },
   { mode: 'bubble', label: '盖在原文上', description: '译文直接盖住气泡' },
   { mode: 'danmaku', label: '排在两侧', description: '译文排在画面左右两栏' },
 ];
@@ -222,7 +221,7 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
     danmakuDisabledReason === 'tall'
       ? '长条漫只用「盖在原文上」'
       : danmakuDisabledReason === 'narrow'
-        ? '需要更宽的窗口'
+        ? '窗口太窄，放不下两侧译文'
         : '译文排在画面左右两栏';
 
   const handleSelectMode = (next: MangaTranslationMode) => {
