@@ -246,7 +246,10 @@ describe('init', () => {
 });
 
 describe('voices', () => {
-  test('lists the Readest group after native and before Edge, and warms the worker', async () => {
+  // Local unlock build (`utils/localUnlock.ts`): the account-gated engine is
+  // removed from every voice list, so the picker never offers it and the
+  // worker is never warmed for a reader who cannot play it.
+  test('filters the account-gated Readest group out of the local picker', async () => {
     h.customInit = false;
     await controller.init();
     vi.mocked(readest().getVoices).mockResolvedValue([
@@ -256,11 +259,11 @@ describe('voices', () => {
       { id: 'edge-tts', name: 'Edge TTS', voices: [] },
     ]);
     const groups = await controller.getVoices('en');
-    expect(groups.map((g) => g.id)).toEqual(['readest-tts', 'edge-tts']);
-    expect(h.warmup).toHaveBeenCalledTimes(1);
+    expect(groups.map((g) => g.id)).toEqual(['edge-tts']);
+    expect(h.warmup).not.toHaveBeenCalled();
   });
 
-  test('shows the Readest group greyed out to readers whose plan lacks it', async () => {
+  test('hides the plan-locked Readest group in a local build', async () => {
     h.readestVoices = READEST_VOICES.map((voice) => ({ ...voice, disabled: true }));
     await controller.init();
     const locked = READEST_VOICES.map((voice) => ({ ...voice, disabled: true }));
@@ -268,7 +271,7 @@ describe('voices', () => {
       { id: 'readest-tts', name: 'Readest Voice', voices: locked, disabled: true },
     ]);
     const groups = await controller.getVoices('en');
-    expect(groups.find((g) => g.id === 'readest-tts')?.voices).toEqual(locked);
+    expect(groups.find((g) => g.id === 'readest-tts')).toBeUndefined();
     expect(h.warmup).not.toHaveBeenCalled();
   });
 });
@@ -387,7 +390,7 @@ describe('custom TTS services', () => {
       { id: 'edge-tts', name: 'Edge TTS', voices: [] },
     ]);
     const groups = await controller.getVoices('de');
-    expect(groups.map((g) => g.id)).toEqual(['custom-tts:svc', 'readest-tts', 'edge-tts']);
+    expect(groups.map((g) => g.id)).toEqual(['custom-tts:svc', 'edge-tts']);
   });
 
   test('are hidden when unavailable (free plan, no services)', async () => {

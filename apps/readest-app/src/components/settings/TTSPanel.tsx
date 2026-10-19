@@ -19,6 +19,13 @@ import {
   TTSPlayerStyle,
 } from '@/services/tts/types';
 import { getTTSCacheConfig, setTTSCacheConfig } from '@/services/tts/providers/bookCacheStore';
+import { loadLocalVoiceGroups } from '@/services/tts/voiceCatalog';
+import { filterVoiceGroups } from '@/services/tts/voiceAvailability';
+import { isVoicePreviewSupported } from '@/services/tts/voicePreview';
+import { TTSUtils } from '@/services/tts/TTSUtils';
+import { TTSVoicesGroup } from '@/services/tts/types';
+import { useVoicePreview } from '@/hooks/useVoicePreview';
+import TTSVoiceRow from '@/components/tts/TTSVoiceRow';
 import {
   BoxedList,
   NavigationRow,
@@ -64,6 +71,40 @@ const TTSPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }
   );
 
   const [ttsCacheConfig, setTtsCacheConfigState] = useState(getTTSCacheConfig());
+
+  // Settings → Voices lists the engines a local build can actually play. The
+  // account-gated groups are filtered out before they reach the picker.
+  const [voiceGroups, setVoiceGroups] = useState<TTSVoicesGroup[]>([]);
+  const [selectedTtsVoice, setSelectedTtsVoice] = useState(viewSettings.ttsVoice ?? '');
+  const voicePreview = useVoicePreview();
+  useEffect(() => {
+    let current = true;
+    loadLocalVoiceGroups()
+      .then((groups) => {
+        if (current) setVoiceGroups(filterVoiceGroups(groups));
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  const handleSelectVoice = (group: TTSVoicesGroup, voiceId: string) => {
+    voicePreview.stop();
+    setSelectedTtsVoice(voiceId);
+    // The controller resolves its engine and default voice from TTSUtils; the
+    // view setting keeps the picker in sync across books.
+    const clientName = group.id === 'web-speech-api' ? 'web-speech' : group.id;
+    try {
+      TTSUtils.setPreferredClient(clientName);
+      const voice = group.voices.find((candidate) => candidate.id === voiceId);
+      if (voice) TTSUtils.setPreferredVoice(clientName, voice.lang, voiceId);
+    } catch {
+      // Storage blocked: the view setting below still records the choice for
+      // this session.
+    }
+    saveViewSettings(envConfig, bookKey, 'ttsVoice', voiceId, false, false);
+  };
 
   const updateTTSCacheConfig = (config: typeof ttsCacheConfig) => {
     setTtsCacheConfigState(config);
@@ -183,6 +224,10 @@ const TTSPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }
     );
   }
 
+  const visibleVoiceGroups = filterVoiceGroups(voiceGroups).filter(
+    (group) => group.voices.length > 0,
+  );
+
   return (
     <div className='my-4 w-full space-y-6'>
       <BoxedList title={_('Voices')} cardClassName='overflow-hidden'>
@@ -194,6 +239,32 @@ const TTSPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }
           data-setting-id='settings.tts.customServices'
         />
       </BoxedList>
+
+      {visibleVoiceGroups.length > 0 && (
+        <BoxedList
+          title={_('Available Voices')}
+          innerClassName='py-1 pe-4'
+          data-setting-id='settings.tts.voices'
+        >
+          {visibleVoiceGroups.flatMap((group) =>
+            group.voices.map((voice) => {
+              const key = `${group.id}:${voice.id}`;
+              return (
+                <TTSVoiceRow
+                  key={key}
+                  group={group}
+                  voice={voice}
+                  selected={selectedTtsVoice === voice.id}
+                  previewing={voicePreview.previewingKey === key}
+                  previewable={isVoicePreviewSupported(group)}
+                  onSelect={() => handleSelectVoice(group, voice.id)}
+                  onTogglePreview={() => voicePreview.toggle(group, voice)}
+                />
+              );
+            }),
+          )}
+        </BoxedList>
+      )}
 
       <TTSHighlightStyleEditor
         granularity={ttsHighlightGranularity}

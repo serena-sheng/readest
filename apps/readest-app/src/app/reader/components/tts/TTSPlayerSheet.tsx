@@ -23,6 +23,10 @@ import { TbArrowBarToRight } from 'react-icons/tb';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { TTSVoicesGroup } from '@/services/tts';
 import { MEDIA_OVERLAY_VOICE_ID } from '@/services/tts/mediaOverlay';
+import { filterVoiceGroups } from '@/services/tts/voiceAvailability';
+import { isVoicePreviewSupported } from '@/services/tts/voicePreview';
+import { useVoicePreview } from '@/hooks/useVoicePreview';
+import TTSVoiceRow from '@/components/tts/TTSVoiceRow';
 import type { TTSLoopState } from '@/services/tts/TTSController';
 import { saveViewSettings } from '@/helpers/settings';
 import { useEnv } from '@/context/EnvContext';
@@ -194,6 +198,7 @@ const TTSPlayerSheet = ({
   const [voiceGroups, setVoiceGroups] = useState<TTSVoicesGroup[]>([]);
   const [rate, setRate] = useState(viewSettings?.ttsRate ?? 1.0);
   const [selectedVoice, setSelectedVoice] = useState('');
+  const voicePreview = useVoicePreview();
   // The voice list is an accordion: at most one group open. Until the reader
   // taps a header, the group of the voice in use (else the first) is open;
   // tapping the open header folds it (null: all folded).
@@ -296,7 +301,7 @@ const TTSPlayerSheet = ({
     // language changed) must not overwrite its result.
     let current = true;
     const fetchVoices = async () => {
-      const groups = await onGetVoices(ttsLang);
+      const groups = filterVoiceGroups(await onGetVoices(ttsLang));
       if (!current) return;
       const voicesCount = groups.reduce((acc, group) => acc + group.voices.length, 0);
       if (!groups || voicesCount === 0) {
@@ -791,46 +796,27 @@ const TTSPlayerSheet = ({
                   />
                 </button>
                 {!collapsed &&
-                  voiceGroup.voices.map((voice) => (
-                    <button
-                      key={`${voiceGroup.id}-${voice.id}`}
-                      type='button'
-                      // A premium voice the plan lacks stays tappable: it
-                      // leads to the upgrade instead of speaking.
-                      disabled={voice.disabled && !voice.tier}
-                      onClick={() =>
-                        voice.disabled ? handleUpgrade() : handleSelectVoice(voice.id, voice.lang)
-                      }
-                      className='flex w-full items-center gap-2 rounded-lg px-2 py-2 text-start'
-                    >
-                      <span className='flex h-6 w-6 items-center justify-center'>
-                        {selectedVoice === voice.id && <MdCheck className='text-base-content' />}
-                      </span>
-                      <span
-                        className={clsx(
-                          'overflow-hidden text-ellipsis text-base sm:text-sm',
-                          voice.disabled && 'text-base-content/40',
-                        )}
-                      >
-                        {_(voice.name)}
-                      </span>
-                      {voice.variant && (
-                        <span className='badge badge-sm badge-ghost ms-auto shrink-0'>
-                          {voice.variant === 'multilingual' ? _('Multilingual') : _('Expressive')}
-                        </span>
-                      )}
-                      {voice.tier && (
-                        <span
-                          className={clsx(
-                            'badge badge-sm badge-ghost shrink-0',
-                            !voice.variant && 'ms-auto',
-                          )}
-                        >
-                          {voice.tier === 'pro' ? _('Pro') : _('Plus')}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                  voiceGroup.voices.map((voice) => {
+                    const key = `${voiceGroup.id}:${voice.id}`;
+                    return (
+                      <TTSVoiceRow
+                        key={`${voiceGroup.id}-${voice.id}`}
+                        group={voiceGroup}
+                        voice={voice}
+                        selected={selectedVoice === voice.id}
+                        previewing={voicePreview.previewingKey === key}
+                        previewable={isVoicePreviewSupported(voiceGroup)}
+                        // A premium voice the plan lacks stays tappable: it
+                        // leads to the upgrade instead of speaking.
+                        onSelect={() => {
+                          voicePreview.stop();
+                          if (voice.disabled) handleUpgrade();
+                          else handleSelectVoice(voice.id, voice.lang);
+                        }}
+                        onTogglePreview={() => voicePreview.toggle(voiceGroup, voice)}
+                      />
+                    );
+                  })}
               </div>
             );
           })}

@@ -73,6 +73,9 @@ export interface SpeechProvider {
   readonly id: string;
   // Human-readable engine name for voice-group headers.
   readonly label: string;
+  // The engine authenticates with a Readest account token. Local builds hide
+  // these groups because they cannot obtain one.
+  readonly authRequired?: boolean;
   // Probe/initialize the transport; false means the engine is unavailable
   // (its voices render disabled in the picker).
   init(): Promise<boolean>;

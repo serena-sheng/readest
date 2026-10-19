@@ -21,6 +21,9 @@ export type TTSVoice = {
   id: string;
   name: string;
   lang: string;
+  // Present only when the engine reports it; most system and Edge voices do
+  // not, so the picker omits the field instead of guessing from the name.
+  gender?: 'male' | 'female';
   disabled?: boolean;
   // Premium voices: the plan that unlocks them, shown as a badge.
   tier?: 'plus' | 'pro';
@@ -34,6 +37,9 @@ export type TTSVoicesGroup = {
   name: string;
   voices: TTSVoice[];
   disabled?: boolean;
+  // The engine needs an account token: a local build (LOCAL_UNLOCK) cannot
+  // use it and hides the group from every picker.
+  authRequired?: boolean;
 };
 
 export type TTSMark = {

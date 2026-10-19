@@ -722,10 +722,13 @@ describe('TTSPlayerSheet', () => {
   });
 
   test('premium voices show the plan that unlocks them', async () => {
+    // Local unlock build (`utils/localUnlock.ts`): Readest Voice is filtered
+    // from every picker, so the tier badges are covered with a cloud engine
+    // that survives the filter.
     const groups = [
       {
-        id: 'readest',
-        name: 'Readest Voice',
+        id: 'cloud-voices',
+        name: 'Cloud Voices',
         voices: [
           { id: 'kokoro:zf_001', name: 'Zifang', lang: 'zh-CN', tier: 'plus' as const },
           { id: 'omnivoice:xiaoyu', name: 'Xiaoyu', lang: 'zh-CN', tier: 'pro' as const },
@@ -735,19 +738,21 @@ describe('TTSPlayerSheet', () => {
     ];
     render(<TTSPlayerSheet {...makeProps({ onGetVoices: vi.fn().mockResolvedValue(groups) })} />);
     fireEvent.click(screen.getByLabelText('Voice'));
-    fireEvent.click(await waitFor(() => screen.getByRole('button', { name: /Readest Voice/ })));
+    fireEvent.click(await waitFor(() => screen.getByRole('button', { name: /Cloud Voices/ })));
     const row = (name: string) => screen.getByText(name).closest('button')!;
-    expect((await waitFor(() => row('Xiaoyu'))).textContent).toBe('XiaoyuPro');
-    expect(row('Zifang').textContent).toBe('ZifangPlus');
+    expect((await waitFor(() => row('Xiaoyu'))).textContent).toContain('Xiaoyu');
+    expect(row('Xiaoyu').textContent).toContain('Pro');
+    expect(row('Zifang').textContent).toContain('Zifang');
+    expect(row('Zifang').textContent).toContain('Plus');
     fireEvent.click(screen.getByRole('button', { name: /Edge TTS/ }));
-    expect(row('Guy').textContent).toBe('Guy');
+    expect(row('Guy').textContent).toContain('Guy');
   });
 
   test('badges sit at the row end; a multilingual voice is badged, a locked one greyed', async () => {
     const groups = [
       {
-        id: 'readest',
-        name: 'Readest Voice',
+        id: 'cloud-voices',
+        name: 'Cloud Voices',
         voices: [
           {
             id: 'omnivoice:xiaoyu',
@@ -774,10 +779,12 @@ describe('TTSPlayerSheet', () => {
     render(<TTSPlayerSheet {...makeProps({ onGetVoices: vi.fn().mockResolvedValue(groups) })} />);
     fireEvent.click(screen.getByLabelText('Voice'));
     const row = (name: string) => screen.getAllByText(name).at(-1)!.closest('button')!;
-    expect((await waitFor(() => row('Xiaoyu'))).innerHTML).toContain('text-base-content/40');
+    expect((await waitFor(() => row('Xiaoyu'))).className).toContain('text-base-content/40');
     expect(screen.getByText('Pro').className).toContain('ms-auto');
     fireEvent.click(screen.getByRole('button', { name: /Edge TTS/ }));
-    expect(row('Ava').textContent).toBe('AvaMultilingual');
+    // The row now also carries the language · gender · engine line.
+    expect(row('Ava').textContent).toContain('Ava');
+    expect(row('Ava').textContent).toContain('Multilingual');
     expect(screen.getByText('Multilingual').className).toContain('ms-auto');
   });
 
@@ -817,7 +824,10 @@ describe('TTSPlayerSheet', () => {
     expect(kokoro.className).not.toContain('font-semibold');
   });
 
-  test('a Readest voice the plan lacks sends the reader to upgrade', async () => {
+  // Local unlock build (`utils/localUnlock.ts`): Readest Voice is filtered out
+  // of every picker, so there is no gated row to tap. Skipped, not deleted, so
+  // the file stays easy to reconcile with upstream.
+  test.skip('a Readest voice the plan lacks sends the reader to upgrade', async () => {
     const groups = [
       {
         id: 'readest-tts',
@@ -845,7 +855,7 @@ describe('TTSPlayerSheet', () => {
   // Local build (`utils/localUnlock.ts`): there is no `/auth` route, so
   // `navigateToLogin` is a no-op rather than routing to a page that would
   // bounce straight back to the library.
-  test('a signed-out reader tapping a Readest voice stays in the reader', async () => {
+  test.skip('a signed-out reader tapping a Readest voice stays in the reader', async () => {
     mockAuth.user = null;
     const groups = [
       {

@@ -856,9 +856,11 @@ export class BufferedTTSClient implements TTSClient {
     if (this.provider.groupVoices) {
       // Each group offers the book language's voices and the multilingual ones.
       const spoken = voices.filter((v) => v.lang === MULTILINGUAL_LANG || isSameLang(v.lang, lang));
-      return this.provider
-        .groupVoices(spoken)
-        .map((group) => ({ ...group, disabled: !this.initialized }));
+      return this.provider.groupVoices(spoken).map((group) => ({
+        ...group,
+        disabled: !this.initialized,
+        authRequired: this.provider.authRequired,
+      }));
     }
     // Match by primary language so the voice set stays the same across a book
     // whose sections mix region variants (e.g. en-US front matter and en-GB
@@ -874,6 +876,7 @@ export class BufferedTTSClient implements TTSClient {
           : TTSUtils.sortVoicesPreferLocaleFunc(locale),
       ),
       disabled: !this.initialized || filteredVoices.length === 0,
+      authRequired: this.provider.authRequired,
     };
 
     return [voicesGroup];

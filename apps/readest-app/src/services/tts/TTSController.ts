@@ -32,6 +32,7 @@ import { SectionTimeline, TimelineSentence } from './SectionTimeline';
 import { estimateSentenceSeconds, hydrateProvisionalDurations } from './ttsDuration';
 import { DownloadableSentence, SectionEnumerator, TTSDownloader } from './TTSDownloader';
 import { TTSUtils } from './TTSUtils';
+import { filterVoiceGroups } from './voiceAvailability';
 import { TTSClient } from './TTSClient';
 import { startAudioKeepAlive, stopAudioKeepAlive } from './WebAudioPlayer';
 import { isSameLang, isValidLang } from '@/utils/lang';
@@ -2279,11 +2280,7 @@ export class TTSController extends EventTarget {
       (await this.ttsReadestClient.getAllVoices()).length > 0
         ? (await this.ttsReadestClient.getVoices(lang)).filter((group) => group.voices.length > 0)
         : [];
-    // The picker is open: boot a GPU worker so the first window is warm, but
-    // only for a reader whose plan has a Readest voice to play.
-    if (ttsReadestVoices.some((group) => group.voices.some((voice) => !voice.disabled))) {
-      this.#readestProvider.warmup();
-    }
+
     // The book's own narrator leads the list when there is one: it is the best
     // voice available for that book by a wide margin.
     const narrationVoices = this.narrationAvailable
@@ -2294,14 +2291,24 @@ export class TTSController extends EventTarget {
       ? (await this.ttsCustomClient.getVoices(lang)).filter((group) => group.voices.length > 0)
       : [];
 
-    const voicesGroups = [
+    const voicesGroups = filterVoiceGroups([
       ...narrationVoices,
       ...ttsCustomVoices,
       ...ttsReadestVoices,
       ...ttsEdgeVoices,
       ...ttsNativeVoices,
       ...ttsWebVoices,
-    ];
+    ]);
+    // The picker is open: boot a GPU worker so the first window is warm, but
+    // only for a reader whose plan has a Readest voice to play. A local build
+    // filtered the group out above, so it never triggers a cold worker.
+    if (
+      voicesGroups.some(
+        (group) => group.id === 'readest-tts' && group.voices.some((voice) => !voice.disabled),
+      )
+    ) {
+      this.#readestProvider.warmup();
+    }
     return voicesGroups;
   }
 
