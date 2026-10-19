@@ -9,7 +9,12 @@
  * page is better than rendering misplaced text over the artwork.
  */
 
-import type { MangaBox, MangaBubble } from './types';
+import {
+  normalizeMangaTargetLang,
+  type MangaBox,
+  type MangaBubble,
+  type MangaTargetLang,
+} from './types';
 
 // A model occasionally overflows the page by a pixel or two, which is fine.
 // Overflow past 20% means the coordinate system is wrong, not the box.
@@ -29,14 +34,53 @@ const MIN_VALID_RATIO = 0.5;
  * fractions; when asked for pixels it systematically compresses y to roughly
  * 0.7× and every translation drifts upward.
  */
-export const BASE_PROMPT = `你是漫画翻译引擎。检测图片中所有包含文字的气泡、对话框、旁白框和音效字,将其中文字翻译成简体中文,以严格 JSON 数组返回,不要输出任何其他内容:
+const PROMPTS: Record<MangaTargetLang, string> = {
+  'zh-Hans': `你是漫画翻译引擎。检测图片中所有包含文字的气泡、对话框、旁白框和音效字,将其中文字翻译成简体中文,以严格 JSON 数组返回,不要输出任何其他内容:
 [{"box":[x1,y1,x2,y2],"src":"原文","dst":"译文","vertical":true}]
 要求:
 1. box 用归一化坐标:0~1 之间的小数,x 除以图宽、y 除以图高(左上角是 [0,0],右下角是 [1,1]),保留 4 位小数,紧贴文字;
 2. vertical:原文为竖排(日语漫画常见)则为 true,横排为 false;
 3. 无文字的图返回 [];
 4. 译文要求:忠实翻译气泡内的文字与潜台词,保留说话人语气;日语省略的主语和语气词(央求、抗拒、羞耻、兴奋等)要在中文体现出来;拟声词翻译为中文惯用拟声词;同一格内多个气泡按阅读顺序排列;
-5. 只输出 JSON,不要 markdown 代码块标记。`;
+5. 只输出 JSON,不要 markdown 代码块标记。`,
+  en: `You are a manga translation engine. Detect every speech bubble, dialogue box, caption box, and sound effect that contains text in the image, translate that text into English, and return it as a strict JSON array with no other output:
+[{"box":[x1,y1,x2,y2],"src":"source text","dst":"translation","vertical":true}]
+Requirements:
+1. Use normalized coordinates: decimals between 0 and 1, x divided by the image width and y by the image height (top-left is [0,0], bottom-right is [1,1]); keep 4 decimal places and fit the box tightly to the text;
+2. vertical: true when the source text runs top to bottom (common in Japanese manga), false for horizontal text;
+3. Return [] for an image with no text;
+4. Translation: faithfully translate the bubble's text and implied meaning while preserving the speaker's tone; render Japanese elided subjects and tone particles (pleading, resistance, embarrassment, excitement…) naturally in English; translate sound effects as idiomatic English onomatopoeia; order multiple bubbles in one panel by reading order;
+5. Output only JSON, with no markdown code fences.`,
+  ja: `あなたは漫画翻訳エンジンです。画像内の文字を含む吹き出し、セリフ枠、ナレーション枠、効果音をすべて検出し、その文字を日本語に翻訳して、次の厳密な JSON 配列だけを出力してください:
+[{"box":[x1,y1,x2,y2],"src":"原文","dst":"訳文","vertical":true}]
+要件:
+1. box は正規化座標を使う:0〜1 の小数で、x は画像幅、y は画像高さで割る(左上が [0,0]、右下が [1,1])。小数第 4 位まで残し、文字にぴったり合わせる;
+2. vertical:原文が縦書き(日本の漫画で一般的)なら true、横書きなら false;
+3. 文字のない画像には [] を返す;
+4. 訳文:吹き出し内の文字と含意を忠実に翻訳し、話者の口調を保つ;日本語の省略された主語や語気(懇願、抵抗、羞恥、興奮など)を自然に補う;擬音語は日本語の慣用表現に訳す;同じコマ内の複数の吹き出しは読む順に並べる;
+5. JSON だけを出力し、markdown のコードフェンスは付けない。`,
+};
+
+const GLOSSARY_HEADERS: Record<MangaTargetLang, string> = {
+  'zh-Hans': '术语表(优先使用下列译法,未列出的按语境直译):',
+  en: 'Glossary (prefer these renderings; translate anything unlisted from context):',
+  ja: '用語集(以下の訳を優先し、記載のない語は文脈に沿って訳す):',
+};
+
+const EXTRA_HEADERS: Record<MangaTargetLang, string> = {
+  'zh-Hans': '本站点补充要求:',
+  en: 'Additional requirements for this site:',
+  ja: 'このサイトの追加要件:',
+};
+
+const CLOSING_LINES: Record<MangaTargetLang, string> = {
+  'zh-Hans': '以上补充要求不改变输出格式:仍然只输出 JSON 数组。',
+  en: 'These additions do not change the output format: still return only the JSON array.',
+  ja: '上記の追加要件は出力形式を変えない:引き続き JSON 配列のみを出力する。',
+};
+
+/** The original Simplified Chinese wording, kept for callers that imported it. */
+export const BASE_PROMPT = PROMPTS['zh-Hans'];
 
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
@@ -47,23 +91,35 @@ const isFiniteNumber = (value: unknown): value is number =>
  * contract; the closing line repeats that the format does not change.
  */
 export function buildVisionPrompt(
-  options: { glossary?: Record<string, string>; extra?: string } = {},
+  options: {
+    glossary?: Record<string, string>;
+    extra?: string;
+    targetLang?: string | null;
+  } = {},
 ): string {
+  const targetLang = normalizeMangaTargetLang(options.targetLang);
+  const basePrompt = PROMPTS[targetLang];
   const glossary = Object.entries(options.glossary ?? {})
     .map(([term, translation]) => [term.trim(), translation.trim()] as const)
     .filter(([term]) => term.length > 0);
   const extra = (options.extra ?? '').trim();
-  if (glossary.length === 0 && !extra) return BASE_PROMPT;
+  if (glossary.length === 0 && !extra) return basePrompt;
 
-  const sections = [BASE_PROMPT];
+  const keepOriginal =
+    targetLang === 'zh-Hans'
+      ? '保留原文'
+      : targetLang === 'ja'
+        ? '原文のまま'
+        : 'keep the original';
+  const sections = [basePrompt];
   if (glossary.length > 0) {
     const lines = glossary.map(([term, translation]) =>
-      translation ? `${term} → ${translation}` : `${term} → 保留原文`,
+      translation ? `${term} → ${translation}` : `${term} → ${keepOriginal}`,
     );
-    sections.push(`术语表(优先使用下列译法,未列出的按语境直译):\n${lines.join('\n')}`);
+    sections.push(`${GLOSSARY_HEADERS[targetLang]}\n${lines.join('\n')}`);
   }
-  if (extra) sections.push(`本站点补充要求:\n${extra}`);
-  sections.push('以上补充要求不改变输出格式:仍然只输出 JSON 数组。');
+  if (extra) sections.push(`${EXTRA_HEADERS[targetLang]}\n${extra}`);
+  sections.push(CLOSING_LINES[targetLang]);
   return sections.join('\n\n');
 }
 

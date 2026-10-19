@@ -31,6 +31,8 @@ vi.mock('@/hooks/useTranslation', () => ({
   useTranslation: () => (key: string, options?: Record<string, string | number>) =>
     key.replace('{{count}}', String(options?.['count'] ?? '')),
 }));
+vi.mock('@/context/EnvContext', () => ({ useEnv: () => ({ envConfig: {} }) }));
+vi.mock('@/helpers/settings', () => ({ saveViewSettings: vi.fn() }));
 
 const endpoint = { baseUrl: 'https://vision.example.com/v1', model: 'vision-1' };
 const page: MangaPageResult = {

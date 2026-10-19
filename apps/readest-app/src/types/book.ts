@@ -358,6 +358,10 @@ export interface BookLanguage {
 // 'push' slides the whole strip; 'slide' and 'curl' layer the outgoing page
 // over the still incoming page (Apple Books style, needs View Transitions).
 export type PageTurnStyle = 'push' | 'slide' | 'curl';
+
+/** How manga text overlays are drawn; `off` keeps the page untouched. */
+export type MangaTranslationMode = 'off' | 'bubble' | 'danmaku';
+
 export interface ViewConfig {
   sideBarTab: string;
   uiLanguage: string;
@@ -416,6 +420,12 @@ export interface ViewConfig {
   readingRulerPosition: number;
   readingRulerOpacity: number;
   readingRulerColor: ReadingRulerColor;
+
+  /**
+   * Remembered manga translation overlay per book. Restored when the book
+   * opens, so `bubble`/`danmaku` resumes translating each page automatically.
+   */
+  mangaTranslationMode: MangaTranslationMode;
 }
 
 export interface TTSConfig {

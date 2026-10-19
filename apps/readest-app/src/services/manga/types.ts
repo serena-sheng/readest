@@ -29,9 +29,23 @@ export interface MangaVisionEndpoint {
   model: string;
 }
 
+/** Targets the vision prompt has a wording for. */
+export type MangaTargetLang = 'zh-Hans' | 'en' | 'ja';
+
 /**
- * The portrait prompt in `visionPrompt.ts` translates into Simplified
- * Chinese, so the cache scopes entries to that target explicitly instead of
- * relying on an implicit default.
+ * The default target the visual prompt was originally written for. Kept as a
+ * separate constant so the cache still scopes entries when no target is given.
  */
-export const MANGA_TARGET_LANG = 'zh-Hans';
+export const MANGA_TARGET_LANG: MangaTargetLang = 'zh-Hans';
+
+/**
+ * Maps a reader language tag to one of the prompt wordings. Anything the
+ * manga prompt does not specialize (including `zh-Hant`) falls back to the
+ * original Simplified Chinese target.
+ */
+export const normalizeMangaTargetLang = (lang?: string | null): MangaTargetLang => {
+  const tag = (lang ?? '').trim().toLowerCase();
+  if (tag === 'ja' || tag.startsWith('ja-')) return 'ja';
+  if (tag === 'en' || tag.startsWith('en-')) return 'en';
+  return MANGA_TARGET_LANG;
+};

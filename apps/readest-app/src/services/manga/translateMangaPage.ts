@@ -13,7 +13,11 @@
 
 import { hashBytes } from './imageHash';
 import { getMangaPage, glossaryRevision, makeMangaCacheKey, setMangaPage } from './mangaCache';
-import { MANGA_TARGET_LANG, type MangaPageResult, type MangaVisionEndpoint } from './types';
+import {
+  normalizeMangaTargetLang,
+  type MangaPageResult,
+  type MangaVisionEndpoint,
+} from './types';
 import { buildVisionPrompt, parseVisionResult } from './visionPrompt';
 
 const REQUEST_TIMEOUT_MS = 60_000;
@@ -64,9 +68,12 @@ export async function translateMangaPage(args: {
   height: number;
   endpoint: MangaVisionEndpoint;
   glossary?: Record<string, string>;
+  /** Target language of the overlay; defaults to Simplified Chinese. */
+  targetLang?: string | null;
   signal?: AbortSignal;
 }): Promise<MangaPageResult> {
   const { image, mimeType, width, height, endpoint, glossary, signal } = args;
+  const targetLang = normalizeMangaTargetLang(args.targetLang);
 
   if (!(width > 0) || !(height > 0)) fail('页面尺寸无效');
   if (!SUPPORTED_MIME_TYPES.includes(mimeType)) fail(`不支持的图片类型（${mimeType}）`);
@@ -91,7 +98,7 @@ export async function translateMangaPage(args: {
   const cacheKey = makeMangaCacheKey(
     hashBytes(bytes),
     model,
-    MANGA_TARGET_LANG,
+    targetLang,
     glossaryRevision(glossary),
   );
   const cached = await getMangaPage(cacheKey);
@@ -131,7 +138,7 @@ export async function translateMangaPage(args: {
             {
               role: 'user',
               content: [
-                { type: 'text', text: buildVisionPrompt({ glossary }) },
+                { type: 'text', text: buildVisionPrompt({ glossary, targetLang }) },
                 { type: 'image_url', image_url: { url: dataUrl } },
               ],
             },
