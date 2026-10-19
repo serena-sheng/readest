@@ -111,6 +111,7 @@ import { Toast } from '@/components/Toast';
 import { createBookGroups, findGroupById, getBreadcrumbs } from './utils/libraryUtils';
 import Spinner from '@/components/Spinner';
 import LibraryHeader from './components/LibraryHeader';
+import TagBrowserPanel from './components/TagBrowserPanel';
 import Bookshelf from './components/Bookshelf';
 import ImportMenuPopup from './components/ImportMenuPopup';
 import GroupHeader from './components/GroupHeader';
@@ -279,6 +280,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [isSelectNone, setIsSelectNone] = useState(false);
+  const [isTagBrowserOpen, setIsTagBrowserOpen] = useState(false);
   const [librarySearchQuery, setLibrarySearchQuery] = useState(searchParams?.get('q') ?? '');
   const pendingLibrarySearchQueryRef = useRef<string | null>(null);
   const [librarySearchProgress, setLibrarySearchProgress] = useState<number | null>(null);
@@ -1997,6 +1999,8 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           }
           onOpenCatalogManager={handleShowOPDSDialog}
           onOpenFeeds={handleShowFeeds}
+          onToggleTagBrowser={() => setIsTagBrowserOpen((open) => !open)}
+          isTagBrowserOpen={isTagBrowserOpen}
           onToggleSelectMode={() => handleSetSelectMode(!isSelectMode)}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
@@ -2270,6 +2274,10 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
         isOpen={showImportNovel}
         onClose={() => setShowImportNovel(false)}
         onImport={handleImportNovelFile}
+      />
+      <TagBrowserPanel
+        open={isTagBrowserOpen}
+        onClose={() => setIsTagBrowserOpen(false)}
       />
       <ClipSignInAlert />
       <Toast />

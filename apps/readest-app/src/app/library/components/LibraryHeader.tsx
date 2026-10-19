@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import React, { useRef } from 'react';
-import { FaChevronDown, FaSearch } from 'react-icons/fa';
+import { FaChevronDown, FaSearch, FaTags } from 'react-icons/fa';
 import { MdManageSearch } from 'react-icons/md';
 import { PiPlus } from 'react-icons/pi';
 import { PiSelectionAll, PiSelectionAllFill } from 'react-icons/pi';
@@ -34,6 +34,8 @@ interface LibraryHeaderProps {
   onImportBookFromNovelUrl?: () => void;
   onOpenCatalogManager: () => void;
   onOpenFeeds: () => void;
+  onToggleTagBrowser?: () => void;
+  isTagBrowserOpen?: boolean;
   onToggleSelectMode: () => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
@@ -56,6 +58,8 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   onImportBookFromNovelUrl,
   onOpenCatalogManager,
   onOpenFeeds,
+  onToggleTagBrowser,
+  isTagBrowserOpen = false,
   onToggleSelectMode,
   onSelectAll,
   onDeselectAll,
@@ -260,6 +264,18 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
           </div>
         ) : (
           <div className='flex h-full items-center gap-x-2 sm:gap-x-4'>
+            {onToggleTagBrowser && (
+              <button
+                type='button'
+                title='标签'
+                aria-label='标签'
+                aria-pressed={isTagBrowserOpen}
+                className='btn btn-ghost h-8 min-h-8 w-8 p-0'
+                onClick={onToggleTagBrowser}
+              >
+                <FaTags role='none' size={iconSize18} />
+              </button>
+            )}
             <Dropdown
               label={_('View Menu')}
               className='exclude-title-bar-mousedown dropdown-bottom dropdown-end'
