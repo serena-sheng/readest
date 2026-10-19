@@ -31,6 +31,7 @@ import SidebarToggler from './SidebarToggler';
 import BookmarkToggler from './BookmarkToggler';
 import NotebookToggler from './NotebookToggler';
 import TranslationToggler from './TranslationToggler';
+import MangaTranslateToggler from './manga/MangaTranslateToggler';
 import ViewMenu from './ViewMenu';
 import SyncInfoDialog from './SyncInfoDialog';
 import AskLocalToggler from './AskLocalToggler';
@@ -278,6 +279,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
             </button>
             <BookmarkToggler bookKey={bookKey} />
             <TranslationToggler bookKey={bookKey} />
+            <MangaTranslateToggler bookKey={bookKey} view={view ?? null} />
           </div>
           {enableAnnotationQuickActions && (
             <Dropdown
