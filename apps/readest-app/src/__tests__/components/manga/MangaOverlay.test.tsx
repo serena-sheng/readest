@@ -129,7 +129,7 @@ describe('MangaOverlay', () => {
     expect(container.querySelectorAll('.manga-bubble-text')).toHaveLength(0);
   });
 
-  it('clamps the font size at 9px for a tiny box', async () => {
+  it('clamps the font size at 12px for a tiny box', async () => {
     render(
       <MangaOverlay
         imageEl={image}
@@ -145,6 +145,7 @@ describe('MangaOverlay', () => {
     );
 
     const bubble = await screen.findByText('这是一段很长的译文需要缩小到最小字号');
-    await waitFor(() => expect(bubble.style.fontSize).toBe('9px'));
+    await waitFor(() => expect(bubble.style.fontSize).toBe('12px'));
+    expect(bubble.style.lineHeight).toBe('1.5');
   });
 });

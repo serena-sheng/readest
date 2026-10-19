@@ -24,9 +24,11 @@ const formatElapsed = (status: { startedAt: number }, now: number): number =>
   Math.max(0, Math.floor((now - status.startedAt) / 1000));
 
 /**
- * Inline translation feedback at the top centre of the reading area. It is
- * owned by the reader pane (not the global toast slot) so a progress bar, an
- * empty notice and an error can't displace each other or cover the artwork.
+ * Inline translation feedback docked at the bottom centre of the reading area,
+ * just above the footer bar. It is owned by the reader pane (not the global
+ * toast slot) so a progress bar, an empty notice and an error can't displace
+ * each other; a fixed box outside the paged snapshot also stays out of page
+ * turns.
  */
 const MangaStatusBar: React.FC<MangaStatusBarProps> = ({ status, onStop, onRetry, onDismiss }) => {
   const _ = useTranslation();
@@ -91,8 +93,9 @@ const MangaStatusBar: React.FC<MangaStatusBarProps> = ({ status, onStop, onRetry
     <div
       role={isError ? 'alert' : 'status'}
       data-manga-status={status.kind}
-      className='pointer-events-auto absolute left-1/2 top-3 z-20 flex h-9 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-[10px] px-3 text-sm'
+      className='pointer-events-auto fixed left-1/2 z-[9] flex h-9 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-[10px] px-3 text-sm'
       style={{
+        bottom: '56px',
         backgroundColor: 'color-mix(in srgb, var(--color-base-100) 92%, transparent)',
         border: '1px solid var(--color-base-300)',
         boxShadow: '0 8px 24px rgba(0,0,0,.12)',

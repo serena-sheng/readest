@@ -12,8 +12,8 @@ export const MANGA_CHIP_CLASS = 'manga-danmaku-chip';
 export const MANGA_SCROLL_HINT_CLASS = 'manga-danmaku-scroll-hint';
 const BUBBLE_CLASS = 'manga-bubble-text';
 const BUBBLE_PADDING = 2;
-const MIN_FONT_SIZE = 9;
-const LINE_HEIGHT = 1.15;
+const MIN_FONT_SIZE = 12;
+const LINE_HEIGHT = 1.5;
 
 // Danmaku gutters: the gutter takes a fifth of the container, bounded by these
 // limits, and the page image must keep at least MIN_DANMAKU_IMAGE_WIDTH.
@@ -21,11 +21,13 @@ const GUTTER_RATIO = 0.2;
 const GUTTER_MIN_WIDTH = 150;
 const GUTTER_MAX_WIDTH = 300;
 const MIN_DANMAKU_IMAGE_WIDTH = 120;
-const DANMAKU_FONT_SIZE = 14;
-const NARROW_DANMAKU_FONT_SIZE = 12;
+const DANMAKU_FONT_SIZE = 15;
+const NARROW_DANMAKU_FONT_SIZE = 13;
 const NARROW_GUTTER_WIDTH = 90;
-const DANMAKU_LINE_HEIGHT = 1.35;
+const DANMAKU_LINE_HEIGHT = 1.65;
 const DANMAKU_GAP = 6;
+/** Air between a pill's artwork-facing edge and the page image. */
+const CHIP_IMAGE_GAP = 8;
 const CHIP_PADDING_X = 6;
 const CHIP_PADDING_Y = 3;
 const CHIP_BORDER_LEFT = 3;
@@ -75,8 +77,6 @@ interface DanmakuGeometry {
   imageWidth: number;
   imageHeight: number;
   gutterWidth: number;
-  leftGutterLeft: number;
-  rightGutterLeft: number;
   /** True when the image had to be narrowed to make room for the gutters. */
   narrow: boolean;
 }
@@ -111,8 +111,6 @@ const computeDanmakuGeometry = (
       imageWidth: imageRect.width,
       imageHeight: imageRect.height,
       gutterWidth,
-      leftGutterLeft: Math.max(0, imageLeft - gutterWidth),
-      rightGutterLeft: Math.max(imageLeft + imageRect.width, 0),
       narrow: false,
     };
   }
@@ -134,8 +132,6 @@ const computeDanmakuGeometry = (
     imageWidth,
     imageHeight,
     gutterWidth,
-    leftGutterLeft: 0,
-    rightGutterLeft: Math.max(parentWidth - gutterWidth, narrowedLeft + imageWidth),
     narrow: true,
   };
 };
@@ -171,7 +167,7 @@ interface OverlayFrame {
  * Starts from the box's short side and shrinks one pixel at a time until the
  * estimated line count fits. Japanese/Chinese characters are close to one em
  * wide, so `floor(extent / size)` characters per line is a good estimate; the
- * 1.15 line height is the same value the bubble renders with.
+ * 1.5 line height is the same value the bubble renders with.
  */
 export const computeMangaBubbleFontSize = ({
   width,
@@ -418,7 +414,6 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
         : 'rgba(255, 255, 255, 0.9)';
       chip.style.backdropFilter = 'blur(10px)';
       chip.style.setProperty('-webkit-backdrop-filter', 'blur(10px)');
-      chip.style.borderLeft = `${CHIP_BORDER_LEFT}px solid #F0457E`;
       chip.style.boxShadow = '0 1px 4px rgba(0, 0, 0, 0.18)';
       chip.style.borderRadius = '6px';
       chip.style.padding = `${CHIP_PADDING_Y}px ${CHIP_PADDING_X}px`;
@@ -506,10 +501,6 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
           geometry.imageTop = appliedRect.top - parentRect.top - parent.clientTop;
           geometry.imageWidth = appliedRect.width;
           geometry.imageHeight = appliedRect.height;
-          geometry.rightGutterLeft = Math.max(
-            geometry.parentWidth - geometry.gutterWidth,
-            geometry.imageLeft + geometry.imageWidth,
-          );
         }
       }
       const { gutterWidth } = geometry;
@@ -519,35 +510,36 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       const narrowGutter = gutterWidth < NARROW_GUTTER_WIDTH;
       const chipFontSize = narrowGutter ? NARROW_DANMAKU_FONT_SIZE : DANMAKU_FONT_SIZE;
       const chipBorderWidth = narrowGutter ? 2 : CHIP_BORDER_LEFT;
-      // A page rendered at 100% can be wider than the visible viewport, and a
-      // column pinned past that edge is cut off. Clamp both columns into the
-      // visible area with a small inset so the chip never touches the frame.
-      const visibleWidth =
-        parent.ownerDocument?.defaultView?.innerWidth || geometry.parentWidth;
-      const inset = 8;
-      const clampLeft = (value: number) =>
-        Math.max(inset, Math.min(value, Math.max(inset, visibleWidth - gutterWidth - inset)));
-      const gutterLeft: Record<DanmakuSide, number> = {
-        left: clampLeft(Math.min(geometry.leftGutterLeft, geometry.imageLeft - gutterWidth)),
-        right: clampLeft(
-          Math.max(geometry.rightGutterLeft, geometry.imageLeft + geometry.imageWidth),
-        ),
+      const imageRight = geometry.imageLeft + geometry.imageWidth;
+      // Each column ends exactly on the image edge and grows outwards, so a
+      // pill 8px from that edge always lands 8px from the artwork.
+      const leftWidth = Math.min(gutterWidth, Math.max(0, geometry.imageLeft));
+      const gutterBox: Record<DanmakuSide, { left: number; width: number }> = {
+        left: {
+          width: leftWidth,
+          left: Math.max(0, geometry.imageLeft - leftWidth),
+        },
+        right: {
+          width: Math.min(gutterWidth, Math.max(0, geometry.parentWidth - imageRight)),
+          left: imageRight,
+        },
       };
 
       (['left', 'right'] as const).forEach((side) => {
         const gutter = gutters[side];
-        gutter.style.width = `${gutterWidth}px`;
+        const { left, width } = gutterBox[side];
+        gutter.style.width = `${width}px`;
         gutter.style.top = `${geometry.imageTop}px`;
         gutter.style.height = `${renderedHeight}px`;
-        gutter.style.left = `${gutterLeft[side]}px`;
+        gutter.style.left = `${left}px`;
         // The gap to the artwork is applied per chip below; padding here would
         // shift the absolute origin and pull the pills away from the image.
 
-        hints[side].top.style.width = `${gutterWidth}px`;
-        hints[side].top.style.left = `${gutterLeft[side]}px`;
+        hints[side].top.style.width = `${width}px`;
+        hints[side].top.style.left = `${left}px`;
         hints[side].top.style.top = `${geometry.imageTop}px`;
-        hints[side].bottom.style.width = `${gutterWidth}px`;
-        hints[side].bottom.style.left = `${gutterLeft[side]}px`;
+        hints[side].bottom.style.width = `${width}px`;
+        hints[side].bottom.style.left = `${left}px`;
         hints[side].bottom.style.top = `${
           geometry.imageTop + renderedHeight - SCROLL_HINT_HEIGHT
         }px`;
@@ -555,15 +547,18 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
 
       items.forEach((item) => {
         item.el.style.fontSize = `${chipFontSize}px`;
-        item.el.style.borderLeftWidth = `${chipBorderWidth}px`;
-        // Pills sit next to the artwork: the left column anchors to its right
-        // edge, the right column to its left edge, with a 6px gap.
+        // The spine always faces the artwork: its right edge in the left
+        // column, its left edge in the right column.
+        item.el.style.borderLeft =
+          item.side === 'right' ? `${chipBorderWidth}px solid #F0457E` : 'none';
+        item.el.style.borderRight =
+          item.side === 'left' ? `${chipBorderWidth}px solid #F0457E` : 'none';
         if (item.side === 'left') {
           item.el.style.left = 'auto';
-          item.el.style.right = '6px';
+          item.el.style.right = `${CHIP_IMAGE_GAP}px`;
         } else {
           item.el.style.right = 'auto';
-          item.el.style.left = '6px';
+          item.el.style.left = `${CHIP_IMAGE_GAP}px`;
         }
       });
 

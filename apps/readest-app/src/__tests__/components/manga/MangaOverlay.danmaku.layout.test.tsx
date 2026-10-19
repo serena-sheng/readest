@@ -112,6 +112,47 @@ describe('MangaOverlay danmaku layout against the image box', () => {
     expect(parseFloat(gutter('right')!.style.left)).toBeGreaterThanOrEqual(imageRight);
   });
 
+  it('pins each pill 8px from the artwork with the spine facing the page', async () => {
+    setup({ containerWidth: 800, imageLeft: 265, imageWidth: 270, imageHeight: 400 });
+
+    renderDanmaku([
+      { box: [100, 200, 300, 400], src: '左原文', dst: '左译文', vertical: false },
+      { box: [1500, 200, 1700, 400], src: '右原文', dst: '右译文', vertical: false },
+    ]);
+    await screen.findByText('左译文');
+    await screen.findByText('右译文');
+
+    const imageLeft = 265;
+    const imageRight = 265 + 270;
+    const leftChip = container.querySelector<HTMLElement>(
+      `.${MANGA_CHIP_CLASS}[data-side="left"]`,
+    )!;
+    const rightChip = container.querySelector<HTMLElement>(
+      `.${MANGA_CHIP_CLASS}[data-side="right"]`,
+    )!;
+
+    // The pill's right edge lands on imageLeft - 8; the gutter's right edge is
+    // the image's left edge.
+    const leftGutter = gutter('left')!;
+    const leftPillRight =
+      parseFloat(leftGutter.style.left) + parseFloat(leftGutter.style.width) -
+      parseFloat(leftChip.style.right);
+    expect(leftPillRight).toBe(imageLeft - 8);
+    expect(leftChip.style.borderRightWidth).toBe('3px');
+    expect(leftChip.style.borderRightStyle).toBe('solid');
+    expect(leftChip.style.borderLeftStyle).toBe('none');
+
+    const rightGutter = gutter('right')!;
+    const rightPillLeft = parseFloat(rightGutter.style.left) + parseFloat(rightChip.style.left);
+    expect(rightPillLeft).toBe(imageRight + 8);
+    expect(rightChip.style.borderLeftWidth).toBe('3px');
+    expect(rightChip.style.borderLeftStyle).toBe('solid');
+    expect(rightChip.style.borderRightStyle).toBe('none');
+
+    expect(leftChip.style.fontSize).toBe('15px');
+    expect(leftChip.style.lineHeight).toBe('1.65');
+  });
+
   it('narrows the image by exactly two gutter widths when space is tight', async () => {
     // 500px container, image using 420px: only 40px of blank space per side.
     setup({ containerWidth: 500, imageLeft: 40, imageWidth: 420, imageHeight: 600 });
@@ -124,8 +165,9 @@ describe('MangaOverlay danmaku layout against the image box', () => {
     expect(image.style.width).toBe('200px');
     expect(image.style.marginLeft).toBe('150px');
     expect(image.style.marginRight).toBe('150px');
-    // Columns keep an 8px inset from the frame so chips never touch the edge.
-    expect(gutter('left')?.style.left).toBe('8px');
+    // The columns hug the narrowed image (left 150, right 350) with no extra
+    // viewport inset; the pills themselves keep the 8px gap.
+    expect(gutter('left')?.style.left).toBe('0px');
     expect(gutter('right')?.style.left).toBe('350px');
   });
 
@@ -166,7 +208,7 @@ describe('MangaOverlay danmaku layout against the image box', () => {
     expect(chip()?.style.background).toBe('rgba(255, 255, 255, 0.94)');
   });
 
-  it('drops to 12px and a 2px spine in a narrow gutter', async () => {
+  it('drops to 13px and a 2px spine in a narrow gutter', async () => {
     setup({ containerWidth: 200, imageWidth: 200, imageHeight: 300 });
 
     renderDanmaku([bubble('窄栏译文')]);
@@ -174,7 +216,9 @@ describe('MangaOverlay danmaku layout against the image box', () => {
 
     // (200 - 120) / 2 = 40px gutter, below the 90px comfortable width.
     expect(gutter('left')?.style.width).toBe('40px');
-    expect(chip()?.style.fontSize).toBe('12px');
-    expect(chip()?.style.borderLeftWidth).toBe('2px');
+    expect(chip()?.style.fontSize).toBe('13px');
+    expect(chip()?.style.lineHeight).toBe('1.65');
+    expect(chip()?.style.borderRightWidth).toBe('2px');
+    expect(chip()?.style.borderLeftStyle).toBe('none');
   });
 });

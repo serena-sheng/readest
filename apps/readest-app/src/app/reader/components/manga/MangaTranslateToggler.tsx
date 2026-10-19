@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { IoChevronDown } from 'react-icons/io5';
 import { MdCheck } from 'react-icons/md';
 import { PiChatTeardropText, PiImageSquare, PiSidebarSimple } from 'react-icons/pi';
 
@@ -24,14 +23,53 @@ interface MangaTranslateTogglerProps {
 }
 
 const MENU_ITEMS: Array<{ mode: MangaTranslationMode; label: string; description: string }> = [
-  { mode: 'off', label: '关闭', description: '显示原始页面' },
-  { mode: 'bubble', label: '嵌字', description: '译文直接盖在气泡上' },
-  { mode: 'danmaku', label: '侧栏译文', description: '译文排在页面两侧' },
+  { mode: 'off', label: '原始页面', description: '不显示译文' },
+  { mode: 'bubble', label: '盖在原文上', description: '译文直接盖住气泡' },
+  { mode: 'danmaku', label: '排在两侧', description: '译文排在画面左右两栏' },
 ];
 
 const MODE_TOOLTIPS: Record<Exclude<MangaTranslationMode, 'off'>, string> = {
-  bubble: '漫画翻译：嵌字（点击关闭）',
-  danmaku: '漫画翻译：侧栏译文（点击关闭）',
+  bubble: '漫画翻译：盖在原文上',
+  danmaku: '漫画翻译：排在两侧',
+};
+
+export const MANGA_MENU_WIDTH = 248;
+/** Air between the trigger's bottom edge and the menu. */
+export const MANGA_MENU_GAP = 6;
+/** Minimum distance the menu keeps from any viewport edge. */
+export const MANGA_MENU_MARGIN = 16;
+/** Room reserved below the trigger so the rows stay reachable. */
+const MANGA_MENU_MIN_HEIGHT = 120;
+
+/**
+ * Fixed position for the menu, in viewport coordinates. It hangs below the
+ * trigger, right-aligns when there is no room to the right, and is clamped
+ * MARGIN pixels inside the viewport on both axes.
+ */
+export const computeMangaMenuPosition = (
+  trigger: { left: number; right: number; bottom: number },
+  viewport: { width: number; height: number },
+): { top: number; left: number; maxHeight: number } => {
+  let left = trigger.left;
+  if (left + MANGA_MENU_WIDTH > viewport.width - MANGA_MENU_MARGIN) {
+    left = trigger.right - MANGA_MENU_WIDTH;
+  }
+  left = Math.max(
+    MANGA_MENU_MARGIN,
+    Math.min(left, viewport.width - MANGA_MENU_WIDTH - MANGA_MENU_MARGIN),
+  );
+
+  const wantedTop = trigger.bottom + MANGA_MENU_GAP;
+  const top = Math.max(
+    MANGA_MENU_MARGIN,
+    Math.min(wantedTop, viewport.height - MANGA_MENU_MARGIN - MANGA_MENU_MIN_HEIGHT),
+  );
+
+  return {
+    top,
+    left,
+    maxHeight: Math.max(MANGA_MENU_MIN_HEIGHT, viewport.height - top - MANGA_MENU_MARGIN),
+  };
 };
 
 /**
@@ -39,8 +77,9 @@ const MODE_TOOLTIPS: Record<Exclude<MangaTranslationMode, 'off'>, string> = {
  * the layer is portalled into the page image's own document, so the header
  * component hosting this button is the natural mount point.
  *
- * The control is a switch plus a small menu arrow: clicking the icon opens or
- * closes the last-used mode, while the menu reaches any mode in one click.
+ * There is one 32×32 button and no second hot zone: it opens a menu (portalled
+ * to `body` so the header's overflow scroller cannot clip it) whose first row
+ * switches translation on or off and whose remaining rows pick a layout.
  */
 const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, view }) => {
   const _ = useTranslation();
@@ -49,10 +88,15 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
   const setSettingsDialogBookKey = useSettingsStore((state) => state.setSettingsDialogBookKey);
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    left: number;
+    maxHeight: number;
+  } | null>(null);
   const [seenImage, setSeenImage] = useState(false);
   const [statusHost, setStatusHost] = useState<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const arrowRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const handleNarrowFallback = useCallback(
     (message: string) => {
@@ -90,9 +134,25 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
     setStatusHost(document.getElementById(`gridcell-${bookKey}`));
   }, [bookKey]);
 
+  const positionMenu = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    setMenuPosition(
+      computeMangaMenuPosition(trigger.getBoundingClientRect(), {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }),
+    );
+  }, []);
+
+  const openMenu = useCallback(() => {
+    positionMenu();
+    setMenuOpen(true);
+  }, [positionMenu]);
+
   const closeMenu = useCallback((returnFocus = false) => {
     setMenuOpen(false);
-    if (returnFocus) arrowRef.current?.focus();
+    if (returnFocus) triggerRef.current?.focus();
   }, []);
 
   useEffect(() => {
@@ -118,6 +178,33 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [closeMenu, menuOpen]);
 
+  // A fixed menu must follow the trigger when the window resizes or the
+  // reader scrolls; a pointer landing anywhere else closes it.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (menuRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      closeMenu();
+    };
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('resize', positionMenu);
+    window.addEventListener('scroll', positionMenu, true);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('resize', positionMenu);
+      window.removeEventListener('scroll', positionMenu, true);
+    };
+  }, [closeMenu, menuOpen, positionMenu]);
+
+  // Keyboard users land in the menu; the trigger stays the way back.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const first = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])');
+    first?.focus();
+  }, [menuOpen]);
+
   if (!seenImage && !available) return null;
 
   const disabled = !available;
@@ -133,10 +220,10 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
       : _('翻译这一页的漫画文字');
   const danmakuDescription =
     danmakuDisabledReason === 'tall'
-      ? '长条漫只用嵌字'
+      ? '长条漫只用「盖在原文上」'
       : danmakuDisabledReason === 'narrow'
         ? '需要更宽的窗口'
-        : '译文排在页面两侧';
+        : '译文排在画面左右两栏';
 
   const handleSelectMode = (next: MangaTranslationMode) => {
     setMenuOpen(false);
@@ -145,14 +232,17 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
 
   return (
     <>
-      <div className='relative flex items-center gap-0.5'>
+      <div className='relative flex items-center'>
         <button
+          ref={triggerRef}
           type='button'
           aria-label={mainLabel}
           aria-pressed={active}
+          aria-haspopup='menu'
+          aria-expanded={menuOpen}
           title={mainLabel}
           disabled={disabled}
-          onClick={() => void toggle()}
+          onClick={() => (menuOpen ? closeMenu(true) : openMenu())}
           className={`touch-target btn btn-ghost relative h-8 min-h-8 w-8 p-0 ${
             disabled ? 'cursor-default bg-transparent! opacity-35' : ''
           }`}
@@ -178,32 +268,32 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
             )
           )}
         </button>
-        {!disabled && (
-          <button
-            ref={arrowRef}
-            type='button'
-            aria-label={_('显示方式')}
-            aria-haspopup='menu'
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-            className='touch-target btn btn-ghost h-8 min-h-8 w-3 p-0'
-          >
-            <IoChevronDown size={12} className='text-base-content/45' />
-          </button>
-        )}
 
-        {menuOpen && (
-          <>
-            <div className='fixed inset-0 z-40' onClick={() => closeMenu()} />
+        {menuOpen &&
+          menuPosition &&
+          createPortal(
             <div
               ref={menuRef}
               role='menu'
-              aria-label={_('显示方式')}
-              className='absolute left-0 top-full z-50 mt-1 w-[248px] rounded-lg border border-base-300 bg-base-200 p-1.5'
+              aria-label={_('漫画翻译显示方式')}
+              className='fixed z-50 w-[248px] overflow-y-auto rounded-lg border border-base-300 bg-base-200 p-1.5'
               style={{
+                top: `${menuPosition.top}px`,
+                left: `${menuPosition.left}px`,
+                maxHeight: `${menuPosition.maxHeight}px`,
                 boxShadow: '0 12px 32px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08)',
               }}
             >
+              <MenuItem
+                label={_(active ? '关闭漫画翻译' : '开启漫画翻译')}
+                toggled={active}
+                transient
+                setIsDropdownOpen={() => closeMenu()}
+                onClick={() => {
+                  setMenuOpen(false);
+                  void toggle();
+                }}
+              />
               {MENU_ITEMS.map((item) => {
                 const isCurrent = item.mode === mode;
                 const itemDisabled = item.mode === 'danmaku' && danmakuDisabledReason !== null;
@@ -225,9 +315,9 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
                   />
                 );
               })}
-            </div>
-          </>
-        )}
+            </div>,
+            document.body,
+          )}
       </div>
 
       {imageEl && result && mode !== 'off' && (

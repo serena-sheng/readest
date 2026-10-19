@@ -42,6 +42,15 @@ describe('MangaStatusBar', () => {
     expect(screen.getByText('正在翻译这一页…')).toBeTruthy();
   });
 
+  it('docks fixed above the footer instead of over the top bar', () => {
+    render(<MangaStatusBar status={{ kind: 'empty' }} />);
+
+    const status = screen.getByRole('status');
+    expect(status.className).toContain('fixed');
+    expect(status.className).not.toContain('absolute');
+    expect(status.style.bottom).toBe('56px');
+  });
+
   it('stops the request from the progress bar', () => {
     const onStop = vi.fn();
     render(

@@ -40,7 +40,7 @@ export const MANGA_DANMAKU_MIN_IMAGE_RATIO = 0.55;
 /** Taller than this is a long-strip page; side gutters become empty columns. */
 export const MANGA_DANMAKU_MAX_ASPECT_RATIO = 2;
 
-export const MANGA_NARROW_NOTICE = '窗口太窄，已改用嵌字。侧栏需要更宽的页面。';
+export const MANGA_NARROW_NOTICE = '窗口太窄，已改用「盖在原文上」';
 
 export type MangaDanmakuBlockedReason = 'narrow' | 'tall';
 
@@ -92,7 +92,7 @@ export const computeMangaDanmakuFit = ({
  */
 export const mangaErrorReason = (error: unknown, fallback = '出了点问题，再试一次。'): string => {
   const message = error instanceof Error ? error.message : '';
-  if (/HTTP 401|HTTP 403/.test(message)) return '模型拒绝了密钥，去设置里换一个新的。';
+  if (/HTTP 401|HTTP 403/.test(message)) return '模型拒绝了 API Key，去设置里换一个新的。';
   if (/HTTP 429/.test(message)) return '请求太频繁，等一下再试。';
   if (/超时|timeout|timed out/i.test(message)) return '模型很久没有返回结果。';
   if (/HTTP 413|too large|过大/i.test(message)) return '这一页对模型来说太大了。';

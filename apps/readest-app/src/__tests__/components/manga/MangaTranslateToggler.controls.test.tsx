@@ -76,24 +76,48 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('MangaTranslateToggler controls', () => {
-  it('toggles the overlay from the main button', () => {
+  it('opens the menu from the main button instead of toggling immediately', () => {
+    renderToggler();
+
+    const button = mainButton();
+    expect(button.getAttribute('aria-haspopup')).toBe('menu');
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(button);
+
+    expect(h.toggle).not.toHaveBeenCalled();
+    expect(screen.getByRole('menu')).toBeTruthy();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('switches translation from the first menu row', () => {
     renderToggler();
 
     fireEvent.click(mainButton());
+    const menu = screen.getByRole('menu');
+    const toggleRow = within(menu).getAllByRole('menuitem')[0]!;
+    expect(toggleRow.getAttribute('aria-label')).toBe('开启漫画翻译 - OFF');
+
+    fireEvent.click(toggleRow);
 
     expect(h.toggle).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 
   it('opens a menu with the three display modes and their descriptions', () => {
     renderToggler();
 
-    fireEvent.click(screen.getByRole('button', { name: '显示方式' }));
+    fireEvent.click(mainButton());
 
     const menu = screen.getByRole('menu');
-    for (const label of ['关闭', '嵌字', '侧栏译文']) {
+    for (const label of ['原始页面', '盖在原文上', '排在两侧']) {
       expect(within(menu).getByText(label)).toBeTruthy();
     }
-    for (const description of ['显示原始页面', '译文直接盖在气泡上', '译文排在页面两侧']) {
+    for (const description of [
+      '不显示译文',
+      '译文直接盖住气泡',
+      '译文排在画面左右两栏',
+    ]) {
       expect(within(menu).getByText(description)).toBeTruthy();
     }
   });
@@ -102,13 +126,13 @@ describe('MangaTranslateToggler controls', () => {
     h.state = baseState('danmaku');
     renderToggler();
 
-    fireEvent.click(screen.getByRole('button', { name: '显示方式' }));
+    fireEvent.click(mainButton());
     const menu = screen.getByRole('menu');
 
-    expect(within(menu).getByRole('menuitem', { name: '侧栏译文 - ON' })).toBeTruthy();
-    expect(within(menu).getByRole('menuitem', { name: '嵌字 - OFF' })).toBeTruthy();
+    expect(within(menu).getByRole('menuitem', { name: '排在两侧 - ON' })).toBeTruthy();
+    expect(within(menu).getByRole('menuitem', { name: '盖在原文上 - OFF' })).toBeTruthy();
 
-    fireEvent.click(within(menu).getByRole('menuitem', { name: '嵌字 - OFF' }));
+    fireEvent.click(within(menu).getByRole('menuitem', { name: '盖在原文上 - OFF' }));
     expect(h.setMode).toHaveBeenCalledWith('bubble');
   });
 
@@ -130,30 +154,32 @@ describe('MangaTranslateToggler controls', () => {
     const button = mainButton();
     expect((button as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(button);
-    expect(h.toggle).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('menu')).toBeTruthy();
   });
 
-  it('keeps the slot but drops the menu arrow on an image-less page', () => {
+  it('keeps the slot but disables the menu on an image-less page', () => {
     h.state = baseState('bubble');
     const { rerender } = renderToggler();
-    expect(screen.getByRole('button', { name: '显示方式' })).toBeTruthy();
+    expect(mainButton()).toBeTruthy();
 
     h.state = { ...baseState('bubble'), available: false };
     rerender(React.createElement(MangaTranslateToggler, { bookKey: 'book-1', view: null }));
 
-    expect(screen.queryByRole('button', { name: '显示方式' })).toBeNull();
-    expect((mainButton() as HTMLButtonElement).disabled).toBe(true);
+    const button = mainButton() as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 
   it('disables the side column row and states why', () => {
     h.state = { ...baseState('bubble'), danmakuDisabledReason: 'narrow' };
     renderToggler();
 
-    fireEvent.click(screen.getByRole('button', { name: '显示方式' }));
+    fireEvent.click(mainButton());
 
     const menu = screen.getByRole('menu');
     expect(within(menu).getByText('需要更宽的窗口')).toBeTruthy();
-    const row = within(menu).getByText('侧栏译文').closest('button');
+    const row = within(menu).getByText('排在两侧').closest('button');
     expect((row as HTMLButtonElement | null)?.disabled).toBe(true);
   });
 });
