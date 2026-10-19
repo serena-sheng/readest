@@ -3,7 +3,7 @@ import { FoliateView } from '@/types/view';
 import { UseTranslatorOptions } from '@/services/translators';
 import { useReaderStore } from '@/store/readerStore';
 import { useBookDataStore } from '@/store/bookDataStore';
-import { useBookProgress } from '@/store/readerProgressStore';
+import { getBookProgress, useBookProgress } from '@/store/readerProgressStore';
 import { useTranslator } from '@/hooks/useTranslator';
 import { useTranslation } from '@/hooks/useTranslation';
 import { eventDispatcher } from '@/utils/event';
@@ -18,6 +18,22 @@ import {
   splitMarkupIntoChunks,
 } from '@/app/reader/utils/translationMarkup';
 import { splitTextIntoChunks } from '@/services/translators/utils';
+import {
+  estimateScreenChars,
+  selectNodesForTranslation,
+} from '@/services/translators/viewportBudget';
+import {
+  getMany,
+  getTranslation,
+  makeTranslationKey,
+  setTranslation,
+} from '@/services/translators/translationCache';
+
+/**
+ * Normalized paragraph text: the same value used for requests, cache keys and
+ * the screen-character budget, so all three agree on what a paragraph is.
+ */
+const getParagraphText = (el: HTMLElement) => el.textContent?.replaceAll('\n', '').trim() ?? '';
 
 /**
  * Markup inflates the payload and the provider's length cap counts the tags,
@@ -117,8 +133,8 @@ export const observeTextNodesByDocument = (
  * instead — that one is folded back to the paragraph that owns it.
  *
  * Folding rather than dropping matters because `allTextNodes` is addressed by
- * index: `getTranslationContextNodes` slices a window around the visible nodes
- * and `findNodeIndicesInRange` maps the reading position to a slot. Dropping an
+ * index: the viewport budget selects a window around the visible nodes and
+ * `findNodeIndicesInRange` maps the reading position to a slot. Dropping an
  * already translated paragraph shifts every index after it and leaves the
  * reading position unresolvable, which silently kills the read-ahead. Keeping
  * the paragraph is safe because `scheduleTranslation` and `translateElement`
@@ -238,6 +254,13 @@ export function useTextTranslation(
   // earlier renders. Batching providers ask for more in-flight paragraphs.
   const maxConcurrentRef = useRef(5);
   maxConcurrentRef.current = translator?.concurrency ?? 5;
+  // Cache scope for the current render. Read through a ref because queue
+  // entries and prefetch callbacks outlive the render that created them.
+  const translationScopeRef = useRef({ targetLang: '', style: '' });
+  translationScopeRef.current = {
+    targetLang: targetLang || getLocale(),
+    style: `${provider ?? ''}|${promptId ?? ''}`,
+  };
   const pendingDOMUpdates = useRef<Array<() => void>>([]);
   const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -283,6 +306,10 @@ export function useTextTranslation(
     allTextNodes.current = nodes;
     observerRefs.current.forEach((observer) => observer.disconnect());
     observerRefs.current = observeTextNodesByDocument(nodes, createTranslationObserver);
+    // Observer callbacks arrive on the next frame; start loading the cache for
+    // the reading position's window immediately so a reopened book paints its
+    // translations without waiting for the provider.
+    prefetchTranslationWindow();
   };
 
   const updateTranslation = () => {
@@ -321,8 +348,18 @@ export function useTextTranslation(
           }
         }
 
-        const nodes = getTranslationContextNodes(allTextNodes.current, document, visibleElements);
-        nodes.forEach((node) => scheduleTranslation(node));
+        const documentNodes = allTextNodes.current.filter(
+          (node) => node.ownerDocument === document,
+        );
+        const visibleIndexes = Array.from(visibleElements)
+          .map((element) => documentNodes.indexOf(element))
+          .filter((index) => index !== -1);
+        const selected = selectTranslationWindow(documentNodes, visibleIndexes);
+        // Batch-read the cache first: hits paint immediately and only the
+        // misses reach the provider queue.
+        void prefetchTranslations(selected).then((misses) =>
+          misses.forEach((node) => scheduleTranslation(node)),
+        );
       },
       { threshold: 0 },
     );
@@ -368,6 +405,116 @@ export function useTextTranslation(
     }
   };
 
+  const getTranslationCacheKey = (el: HTMLElement) => {
+    const text = getParagraphText(el);
+    if (!text) return null;
+    const { targetLang: lang, style } = translationScopeRef.current;
+    return makeTranslationKey(bookKey, lang, style, text);
+  };
+
+  /**
+   * The single DOM path for a translation, whether it came from the cache or
+   * from the provider. Keeping one function is what makes a cached paragraph
+   * indistinguishable from a freshly translated one.
+   */
+  const renderTranslation = (
+    el: HTMLElement,
+    translatedText: string,
+    content?: DocumentFragment,
+  ) => {
+    if (!enabled.current || el.querySelector('.translation-target')) return;
+    const wrapper = createTranslationTargetNode({
+      translatedText,
+      content,
+      lang: translationScopeRef.current.targetLang,
+      targetBlockClassName,
+      hidden: !enabled.current,
+      widthLineBreak,
+    });
+    batchDOMUpdate(() => {
+      if (!enabled.current || el.querySelector('.translation-target')) return;
+      el.classList.add('translation-source');
+      setSourceVisibility(el, !!showTranslateSourceRef.current);
+      el.appendChild(wrapper);
+      translatedElements.current.push(el);
+      // Translations land long after the section's annotations were drawn, so
+      // any highlight anchored inside this paragraph has to be re-attached.
+      eventDispatcher.dispatch('translation-inserted', { bookKey, element: el });
+    });
+  };
+
+  /**
+   * Batch cache lookup for a window. Hits render straight away; the returned
+   * nodes are the ones that still need a provider round trip.
+   */
+  const prefetchTranslations = async (elements: HTMLElement[]) => {
+    const entries: Array<{ el: HTMLElement; key: string }> = [];
+    for (const el of elements) {
+      const key = getTranslationCacheKey(el);
+      if (key) entries.push({ el, key });
+    }
+    if (entries.length === 0) return [];
+
+    const hits = await getMany(entries.map((entry) => entry.key));
+    const misses: HTMLElement[] = [];
+    for (const { el, key } of entries) {
+      const cached = hits.get(key);
+      if (cached !== undefined) {
+        renderTranslation(el, cached);
+      } else if (!el.querySelector('.translation-target')) {
+        misses.push(el);
+      }
+    }
+    return misses;
+  };
+
+  /**
+   * Visible nodes plus the read-ahead budget, in document order. The budget
+   * replaces the old fixed ±N window: it never reaches before the first
+   * visible node, so scrolling back does not re-translate what was passed.
+   */
+  const selectTranslationWindow = (documentNodes: HTMLElement[], visibleIndexes: number[]) => {
+    const translated = new Set<number>();
+    documentNodes.forEach((node, index) => {
+      if (node.querySelector('.translation-target')) translated.add(index);
+    });
+    const visibleChars = visibleIndexes.reduce(
+      (total, index) => total + getParagraphText(documentNodes[index]!).length,
+      0,
+    );
+    const selection = selectNodesForTranslation({
+      nodes: documentNodes,
+      visibleIndexes,
+      translated,
+      screenChars: estimateScreenChars(visibleChars),
+      charOf: (node) => getParagraphText(node).length,
+    });
+    return [...selection.visible, ...selection.lookahead]
+      .sort((a, b) => a - b)
+      .map((index) => documentNodes[index]!);
+  };
+
+  /**
+   * Prefetch the reading position's window right after the document is
+   * observed. `translateInRange` also prefetches, but it only runs when
+   * progress changes; on reopen the position is already current.
+   */
+  const prefetchTranslationWindow = () => {
+    const nodes = allTextNodes.current;
+    const range = getBookProgress(bookKey)?.range;
+    if (nodes.length === 0 || !range) return;
+    const { startIndex, endIndex } = findNodeIndicesInRange(range, nodes);
+    if (startIndex === -1) return;
+    const visibleIndexes: number[] = [];
+    for (let index = startIndex; index <= endIndex; index++) {
+      visibleIndexes.push(index);
+    }
+    const selected = selectTranslationWindow(nodes, visibleIndexes);
+    void prefetchTranslations(selected).then((misses) =>
+      misses.forEach((node) => scheduleTranslation(node)),
+    );
+  };
+
   const recreateTranslationObserver = () => {
     observerRefs.current.forEach((observer) => observer.disconnect());
     observerRefs.current = observeTextNodesByDocument(
@@ -378,17 +525,12 @@ export function useTextTranslation(
 
   const translateElement = async (el: HTMLElement) => {
     if (!enabled.current) return;
-    const text = el.textContent?.replaceAll('\n', '').trim();
+    const text = getParagraphText(el);
     if (!text) return;
 
     if (el.classList.contains('translation-target')) {
       return;
     }
-
-    const updateSourceNodes = (element: HTMLElement) => {
-      element.classList.add('translation-source');
-      setSourceVisibility(element, !!showTranslateSourceRef.current);
-    };
 
     try {
       // Round-trip the paragraph's inline markup when the provider repositions
@@ -401,6 +543,17 @@ export function useTextTranslation(
           ? splitMarkupIntoChunks(payload.html, MAX_MARKUP_PAYLOAD_CHARS, splitTextIntoChunks)
           : [];
       const useMarkup = markupChunks.length > 0;
+
+      // Markup translations are stored as markup and rendered through the
+      // sanitizer, so they do not share the plain-text cache entry.
+      const cacheKey = useMarkup ? null : getTranslationCacheKey(el);
+      if (cacheKey) {
+        const cached = await getTranslation(cacheKey);
+        if (cached !== null) {
+          renderTranslation(el, cached);
+          return;
+        }
+      }
 
       const translated = await translateRef.current(useMarkup ? markupChunks : [text]);
       const translatedText = translated.join('');
@@ -418,29 +571,15 @@ export function useTextTranslation(
         content = combined.childNodes.length ? combined : undefined;
       }
 
-      const wrapper = createTranslationTargetNode({
-        // Falls back to the raw string when markup was not used or did not
-        // survive sanitizing, which is exactly the previous behaviour.
-        translatedText,
-        content,
-        lang: targetLang || getLocale(),
-        targetBlockClassName,
-        hidden: !enabled.current,
-        widthLineBreak,
-      });
-
-      if (el.querySelector('.translation-target')) {
-        return;
+      if (cacheKey) {
+        // Fire-and-forget: the memory layer is already updated synchronously,
+        // and a storage failure must not block the render.
+        void setTranslation(cacheKey, translatedText);
       }
-      batchDOMUpdate(() => {
-        if (!enabled.current || el.querySelector('.translation-target')) return;
-        updateSourceNodes(el);
-        el.appendChild(wrapper);
-        translatedElements.current.push(el);
-        // Translations land long after the section's annotations were drawn, so
-        // any highlight anchored inside this paragraph has to be re-attached.
-        eventDispatcher.dispatch('translation-inserted', { bookKey, element: el });
-      });
+
+      // Falls back to the raw string when markup was not used or did not
+      // survive sanitizing, which is exactly the previous behaviour.
+      renderTranslation(el, translatedText, content);
     } catch (err) {
       console.warn('Translation failed:', err);
     }
@@ -481,16 +620,15 @@ export function useTextTranslation(
         console.log('Range not found in text nodes');
         return;
       }
-      const beforeContext = 2;
-      const afterContext = 5;
-      const beforeStart = Math.max(0, startIndex - beforeContext);
-      const afterEnd = Math.min(nodes.length - 1, endIndex + afterContext);
-      for (let i = beforeStart; i <= afterEnd; i++) {
-        const node = nodes[i];
-        if (node) {
-          scheduleTranslation(node);
-        }
+      const visibleIndexes: number[] = [];
+      for (let index = startIndex; index <= endIndex; index++) {
+        visibleIndexes.push(index);
       }
+      // Visible range plus read-ahead, never the paragraphs before it.
+      const selected = selectTranslationWindow(nodes, visibleIndexes);
+      void prefetchTranslations(selected).then((misses) =>
+        misses.forEach((node) => scheduleTranslation(node)),
+      );
     }, 500),
     [scheduleTranslation],
   );
