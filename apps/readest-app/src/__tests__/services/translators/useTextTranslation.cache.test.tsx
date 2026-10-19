@@ -169,6 +169,30 @@ describe('useTextTranslation cache integration', () => {
     dispatch.mockRestore();
   });
 
+
+  test('never sends a filename to the translator', async () => {
+    const view = createView(['page03.png']);
+
+    renderHook(() => useTextTranslation(BOOK_KEY, view));
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(mocks.translate).not.toHaveBeenCalled();
+    expect(view.querySelector('.translation-target')).toBeNull();
+  });
+
+  test('discards a reply that answers the request instead of translating', async () => {
+    mocks.translate.mockImplementation(async () =>
+      Promise.resolve(["I don't see any text to translate — please paste the text."]),
+    );
+    const view = createView(['Some real prose goes here.']);
+
+    renderHook(() => useTextTranslation(BOOK_KEY, view));
+
+    await waitFor(() => expect(mocks.translate).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(view.querySelector('.translation-target')).toBeNull();
+  });
+
   test('shows the stored translation directly after reopening the book', async () => {
     const firstView = createView(['Remembered paragraph']);
     const firstMount = renderHook(() => useTextTranslation(BOOK_KEY, firstView));

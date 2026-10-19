@@ -210,6 +210,52 @@ export const setSourceVisibility = (el: HTMLElement, visible: boolean) => {
   sourceNodes.forEach((node) => hider.appendChild(node));
 };
 
+/**
+ * Text worth sending to a translator. Navigation labels are not prose: a comic
+ * TOC is a list of file names (`page03.png`), and sending one costs a request
+ * and gets back a model apology that then replaces the label.
+ */
+export const isTranslatableText = (text: string): boolean => {
+  const value = text.trim();
+  if (!value) return false;
+  if (/^[\w .()\-]+\.(png|jpe?g|webp|gif|bmp|svg|avif|html?|xhtml|md|txt|pdf|epub|cbz|fb2)$/i.test(value)) {
+    return false;
+  }
+  // A bare key such as `page03`, `001` or `img_12` carries no prose, while a
+  // real title like `Chapter 1` does.
+  if (/^(page|p|img|image|scan|pic|photo|fig|figure)?[\s_\-]*\d{1,4}$/i.test(value)) return false;
+  // Needs at least one letter or CJK character to be translatable at all.
+  if (!/[\p{L}]/u.test(value)) return false;
+  return true;
+};
+
+/**
+ * Model replies that talk about the request instead of translating it. They
+ * must never be rendered: the reader would show "please paste the text" as if
+ * it were the paragraph.
+ */
+const REFUSAL_MARKERS = [
+  "i don't see",
+  'i do not see',
+  "i can't translate",
+  'i cannot translate',
+  'no text to translate',
+  'there is no text',
+  'please paste',
+  'please provide the text',
+  '没有可翻译',
+  '没有需要翻译',
+  '请提供',
+  '无法翻译',
+  '找不到可翻译',
+];
+
+export const looksLikeTranslationRefusal = (text: string): boolean => {
+  const value = text.trim().toLowerCase();
+  if (!value) return false;
+  return REFUSAL_MARKERS.some((marker) => value.includes(marker));
+};
+
 const SOURCE_TINT_CLASS = 'translation-source-tint';
 
 /**
@@ -410,6 +456,9 @@ export function useTextTranslation(
   const scheduleTranslation = (el: HTMLElement) => {
     if (!enabled.current) return;
     if (el.classList.contains('translation-target')) return;
+    // Filenames and bare keys are not prose; translating them wastes a request
+    // and invites the model to answer with an apology instead of a translation.
+    if (!isTranslatableText(getParagraphText(el))) return;
     if (el.querySelector('.translation-target')) return;
     if (translationQueue.current.indexOf(el) !== -1) return;
     translationQueue.current.push(el);
@@ -467,6 +516,10 @@ export function useTextTranslation(
     content?: DocumentFragment,
   ) => {
     if (!enabled.current || el.querySelector('.translation-target')) return;
+    if (looksLikeTranslationRefusal(translatedText)) {
+      console.warn('Discarding a translation that answers the request instead of translating.');
+      return;
+    }
     const wrapper = createTranslationTargetNode({
       translatedText,
       content,
