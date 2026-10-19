@@ -261,6 +261,10 @@ export function useTextTranslation(
     targetLang: targetLang || getLocale(),
     style: `${provider ?? ''}|${promptId ?? ''}`,
   };
+  // Progress feedback: counts paragraphs handed to the provider versus ones
+  // that finished (cached hits and failures included), so the hint can show
+  // "translating 3/12" instead of an open-ended spinner.
+  const progressRef = useRef({ total: 0, done: 0, ok: 0, lastSentAt: 0, timer: null as ReturnType<typeof setTimeout> | null });
   const pendingDOMUpdates = useRef<Array<() => void>>([]);
   const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -321,6 +325,7 @@ export function useTextTranslation(
     }
     pendingDOMUpdates.current = [];
     translatedElements.current.forEach((element) => {
+      element.classList.remove('translation-source-done');
       const translationTargets = element.querySelectorAll('.translation-target');
       translationTargets.forEach((target) => target.remove());
       // The hidden source wrapper is `display: none`, so a paragraph left with
@@ -330,6 +335,7 @@ export function useTextTranslation(
     });
 
     translatedElements.current = [];
+    resetProgress();
     if (viewSettings?.translationEnabled && view) {
       recreateTranslationObserver();
     }
@@ -371,6 +377,8 @@ export function useTextTranslation(
     if (el.querySelector('.translation-target')) return;
     if (translationQueue.current.indexOf(el) !== -1) return;
     translationQueue.current.push(el);
+    progressRef.current.total += 1;
+    publishProgress();
     drainTranslationQueue();
   };
 
@@ -434,6 +442,9 @@ export function useTextTranslation(
     batchDOMUpdate(() => {
       if (!enabled.current || el.querySelector('.translation-target')) return;
       el.classList.add('translation-source');
+      // Remembers that this paragraph already has a translation, so the
+      // original can carry a tinted background when it is shown side by side.
+      el.classList.add('translation-source-done');
       setSourceVisibility(el, !!showTranslateSourceRef.current);
       el.appendChild(wrapper);
       translatedElements.current.push(el);
@@ -523,12 +534,64 @@ export function useTextTranslation(
     );
   };
 
+  const publishProgress = (force = false) => {
+    const progress = progressRef.current;
+    if (progress.total === 0) return;
+    const now = Date.now();
+    if (!force && now - progress.lastSentAt < 400) return;
+    progress.lastSentAt = now;
+    if (progress.timer) {
+      clearTimeout(progress.timer);
+      progress.timer = null;
+    }
+    eventDispatcher.dispatch('hint', {
+      bookKey,
+      message: _('Translating {{done}}/{{total}}', {
+        done: progress.done,
+        total: progress.total,
+      }),
+      timeout: 1400,
+    });
+  };
+
+  const resetProgress = () => {
+    progressRef.current = { total: 0, done: 0, ok: 0, lastSentAt: 0, timer: null };
+  };
+
+  const finishProgress = () => {
+    const progress = progressRef.current;
+    if (progress.total === 0) return;
+    if (progress.ok > 0) {
+      eventDispatcher.dispatch('hint', {
+        bookKey,
+        message: _('Translation ready · {{count}} paragraphs', { count: progress.ok }),
+        timeout: 1200,
+      });
+    }
+    resetProgress();
+  };
+
+  const markProgressDone = (succeeded = false) => {
+    const progress = progressRef.current;
+    progress.done += 1;
+    if (succeeded) progress.ok += 1;
+    if (progress.done >= progress.total) {
+      finishProgress();
+    } else {
+      publishProgress();
+    }
+  };
+
   const translateElement = async (el: HTMLElement) => {
     if (!enabled.current) return;
     const text = getParagraphText(el);
-    if (!text) return;
+    if (!text) {
+      markProgressDone();
+      return;
+    }
 
     if (el.classList.contains('translation-target')) {
+      markProgressDone();
       return;
     }
 
@@ -551,13 +614,16 @@ export function useTextTranslation(
         const cached = await getTranslation(cacheKey);
         if (cached !== null) {
           renderTranslation(el, cached);
+          markProgressDone(true);
           return;
         }
       }
 
       const translated = await translateRef.current(useMarkup ? markupChunks : [text]);
       const translatedText = translated.join('');
-      if (!translatedText || text === translatedText) return;
+      if (!translatedText || text === translatedText) {
+        return;
+      }
 
       let content: DocumentFragment | undefined;
       if (useMarkup) {
@@ -580,8 +646,11 @@ export function useTextTranslation(
       // Falls back to the raw string when markup was not used or did not
       // survive sanitizing, which is exactly the previous behaviour.
       renderTranslation(el, translatedText, content);
+      markProgressDone(true);
     } catch (err) {
       console.warn('Translation failed:', err);
+    } finally {
+      markProgressDone();
     }
   };
 

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { cleanup, renderHook, waitFor } from '@testing-library/react';
 
 import { useTextTranslation } from '@/app/reader/hooks/useTextTranslation';
+import { eventDispatcher } from '@/utils/event';
 import {
   getTranslation,
   makeTranslationKey,
@@ -124,6 +125,39 @@ describe('useTextTranslation cache integration', () => {
     expect(mocks.translate).toHaveBeenCalledTimes(1);
     expect(mocks.translate).toHaveBeenCalledWith(['Fresh paragraph']);
     expect(await getTranslation(keyFor('Fresh paragraph'))).toBe('Translated: Fresh paragraph');
+  });
+
+  test('marks the original paragraph as translated', async () => {
+    const view = createView(['Marker paragraph']);
+
+    renderHook(() => useTextTranslation(BOOK_KEY, view));
+
+    await waitFor(() => {
+      expect(view.querySelector('.translation-target')?.textContent).toBe(
+        'Translated: Marker paragraph',
+      );
+    });
+    const paragraph = view.querySelector('p')!;
+    expect(paragraph.classList.contains('translation-source')).toBe(true);
+    expect(paragraph.classList.contains('translation-source-done')).toBe(true);
+  });
+
+  test('reports progress and completion through the hint channel', async () => {
+    const dispatch = vi.spyOn(eventDispatcher, 'dispatch');
+    const view = createView(['Progress paragraph']);
+
+    renderHook(() => useTextTranslation(BOOK_KEY, view));
+
+    await waitFor(() => {
+      expect(view.querySelector('.translation-target')).toBeTruthy();
+    });
+
+    const hints = dispatch.mock.calls
+      .filter(([name]) => name === 'hint')
+      .map(([, detail]) => (detail as { message: string }).message);
+    expect(hints.some((message) => message.startsWith('Translating '))).toBe(true);
+    expect(hints.some((message) => message.startsWith('Translation ready'))).toBe(true);
+    dispatch.mockRestore();
   });
 
   test('shows the stored translation directly after reopening the book', async () => {

@@ -110,6 +110,10 @@
   "Already the latest version": "已经是最新版本",
   "Book Details": "书籍详情",
   "From Local File": "从本地文件导入",
+  "From Local Library": "从本机库导入",
+  "Importing from local library ({{index}}/{{total}}): {{title}}": "正在从本机库导入（{{index}}/{{total}}）：{{title}}",
+  "Local library import: {{imported}} imported, {{skipped}} skipped, {{failed}} failed": "本机库导入：导入 {{imported}} 本，跳过 {{skipped}} 本，失败 {{failed}} 本",
+  "Failed to import from local library: {{message}}": "从本机库导入失败：{{message}}",
   "TOC": "目录",
   "Table of Contents": "目录",
   "Book uploaded: {{title}}": "书籍已上传：{{title}}",
@@ -2541,5 +2545,7 @@
   "{{count}} voices available_other": "可用语音 {{count}} 个",
   "Multilingual": "多语言",
   "Expressive": "富有表现力",
-  "Show Page Thumbnails": "显示页面缩略图"
+  "Show Page Thumbnails": "显示页面缩略图",
+  "Translating {{done}}/{{total}}": "翻译中 {{done}}/{{total}}",
+  "Translation ready · {{count}} paragraphs": "翻译完成 · {{count}} 段"
 }
