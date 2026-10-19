@@ -516,9 +516,19 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       const narrowGutter = gutterWidth < NARROW_GUTTER_WIDTH;
       const chipFontSize = narrowGutter ? NARROW_DANMAKU_FONT_SIZE : DANMAKU_FONT_SIZE;
       const chipBorderWidth = narrowGutter ? 2 : CHIP_BORDER_LEFT;
+      // A page rendered at 100% can be wider than the visible viewport, and a
+      // column pinned past that edge is cut off. Clamp both columns into the
+      // visible area with a small inset so the chip never touches the frame.
+      const visibleWidth =
+        parent.ownerDocument?.defaultView?.innerWidth || geometry.parentWidth;
+      const inset = 8;
+      const clampLeft = (value: number) =>
+        Math.max(inset, Math.min(value, Math.max(inset, visibleWidth - gutterWidth - inset)));
       const gutterLeft: Record<DanmakuSide, number> = {
-        left: geometry.leftGutterLeft,
-        right: geometry.rightGutterLeft,
+        left: clampLeft(Math.min(geometry.leftGutterLeft, geometry.imageLeft - gutterWidth)),
+        right: clampLeft(
+          Math.max(geometry.rightGutterLeft, geometry.imageLeft + geometry.imageWidth),
+        ),
       };
 
       (['left', 'right'] as const).forEach((side) => {

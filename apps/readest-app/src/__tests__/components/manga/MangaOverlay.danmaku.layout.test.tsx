@@ -124,7 +124,8 @@ describe('MangaOverlay danmaku layout against the image box', () => {
     expect(image.style.width).toBe('200px');
     expect(image.style.marginLeft).toBe('150px');
     expect(image.style.marginRight).toBe('150px');
-    expect(gutter('left')?.style.left).toBe('0px');
+    // Columns keep an 8px inset from the frame so chips never touch the edge.
+    expect(gutter('left')?.style.left).toBe('8px');
     expect(gutter('right')?.style.left).toBe('350px');
   });
 
