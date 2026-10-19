@@ -405,7 +405,10 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       chip.title = bubble.src;
       chip.style.position = 'absolute';
       chip.style.boxSizing = 'border-box';
-      chip.style.width = '100%';
+      // Pills hug their text and the image edge instead of stretching across
+      // the whole gutter, which read as a full-width bar at 100% zoom.
+      chip.style.width = 'max-content';
+      chip.style.maxWidth = '100%';
       chip.style.fontSize = `${DANMAKU_FONT_SIZE}px`;
       chip.style.lineHeight = `${DANMAKU_LINE_HEIGHT}`;
       // White glass with a magenta spine, legible over any manga artwork.
@@ -537,6 +540,8 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
         gutter.style.top = `${geometry.imageTop}px`;
         gutter.style.height = `${renderedHeight}px`;
         gutter.style.left = `${gutterLeft[side]}px`;
+        // The gap to the artwork is applied per chip below; padding here would
+        // shift the absolute origin and pull the pills away from the image.
 
         hints[side].top.style.width = `${gutterWidth}px`;
         hints[side].top.style.left = `${gutterLeft[side]}px`;
@@ -551,6 +556,15 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       items.forEach((item) => {
         item.el.style.fontSize = `${chipFontSize}px`;
         item.el.style.borderLeftWidth = `${chipBorderWidth}px`;
+        // Pills sit next to the artwork: the left column anchors to its right
+        // edge, the right column to its left edge, with a 6px gap.
+        if (item.side === 'left') {
+          item.el.style.left = 'auto';
+          item.el.style.right = '6px';
+        } else {
+          item.el.style.right = 'auto';
+          item.el.style.left = '6px';
+        }
       });
 
       (['left', 'right'] as const).forEach((side) => {
