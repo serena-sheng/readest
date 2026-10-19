@@ -71,6 +71,11 @@ export interface ReadSettings {
    * silently; users download them explicitly from the Word Lens sub-page.
    */
   wordLensAutoDownload: boolean;
+  /**
+   * Open a comic archive from its first real page, skipping site-ad pages at
+   * the front. The archive itself is never modified; detection is local.
+   */
+  mangaSkipAdPages: boolean;
   highlightStyle: HighlightStyle;
   highlightStyles: Record<HighlightStyle, HighlightColor>;
 

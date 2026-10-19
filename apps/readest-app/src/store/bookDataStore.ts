@@ -65,6 +65,11 @@ export interface BookData {
   /* Format the document parsed as; differs from book.format for streamed stubs */
   docFormat?: BookFormat;
   isFixedLayout: boolean;
+  /**
+   * First real page of a comic whose leading ad pages were detected for this
+   * open. 0 (or absent) means "open at the first page".
+   */
+  mangaStartPage?: number;
 }
 
 interface BookDataState {

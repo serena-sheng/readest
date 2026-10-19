@@ -36,7 +36,7 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
   const { envConfig, appService } = useEnv();
   const { getView, getViews, getViewSettings, recreateViewer } = useReaderStore();
   const { getBookData } = useBookDataStore();
-  const { settings } = useSettingsStore();
+  const { settings, setSettings, saveSettings } = useSettingsStore();
   const { applyEinkMode } = useEinkMode();
   const bookData = getBookData(bookKey);
   const viewSettings = getViewSettings(bookKey) || settings.globalViewSettings;
@@ -91,6 +91,9 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
     settings.hideBookshelfPageButtons,
   );
   const [allowScript, setAllowScript] = useState(viewSettings.allowScript);
+  const [skipMangaAdPages, setSkipMangaAdPages] = useState(
+    settings.globalReadSettings.mangaSkipAdPages ?? true,
+  );
   const [isAutoCheckUpdates, setIsAutoCheckUpdates] = useState(settings.autoCheckUpdates);
   const [isNightlyChannel, setIsNightlyChannel] = useState(settings.updateChannel === 'nightly');
   const [isTelemetryEnabled, setIsTelemetryEnabled] = useState(settings.telemetryEnabled);
@@ -428,6 +431,14 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
     }
   };
 
+  const toggleSkipMangaAdPages = () => {
+    const newValue = !skipMangaAdPages;
+    setSkipMangaAdPages(newValue);
+    settings.globalReadSettings.mangaSkipAdPages = newValue;
+    setSettings(settings);
+    saveSettings(envConfig, settings);
+  };
+
   const getQuickActionOptions = () => {
     return [
       {
@@ -535,6 +546,15 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
           checked={showPaginationButtons}
           onChange={() => setShowPaginationButtons(!showPaginationButtons)}
           data-setting-id='settings.control.showPaginationButtons'
+        />
+      </BoxedList>
+
+      <BoxedList title={_('Comics')} data-setting-id='settings.control.mangaAdPages'>
+        <SettingsSwitchRow
+          label={_('Skip Ad Pages in Comics')}
+          checked={skipMangaAdPages}
+          onChange={toggleSkipMangaAdPages}
+          data-setting-id='settings.control.mangaAdPages'
         />
       </BoxedList>
 

@@ -5,6 +5,7 @@ import {
   deleteEndpoint,
   getActiveEndpoint,
   getActiveEndpointId,
+  getMangaEndpoint,
   listEndpoints,
   saveEndpoint,
   setActiveEndpointId,
@@ -127,5 +128,59 @@ describe('translation endpoints', () => {
 
     window.localStorage.setItem = original;
     expect(getActiveEndpoint()).toEqual(DEFAULT_TRANSLATION_ENDPOINT);
+  });
+
+  it('resolves a manga endpoint only when a vision model is configured', () => {
+    expect(getMangaEndpoint()).toBeNull();
+
+    saveEndpoint(endpoint());
+    expect(getMangaEndpoint()).toBeNull();
+
+    saveEndpoint(
+      endpoint({
+        id: 'vision',
+        kind: 'openai-compatible',
+        baseUrl: 'https://vision.example.com/v1/',
+        model: 'text-1',
+        visionModel: ' vision-1 ',
+        apiKey: ' sk-test ',
+      }),
+    );
+
+    expect(getMangaEndpoint()).toEqual({
+      baseUrl: 'https://vision.example.com/v1',
+      model: 'vision-1',
+      apiKey: 'sk-test',
+    });
+  });
+
+  it('prefers the active vision endpoint and ignores disabled ones', () => {
+    saveEndpoint(
+      endpoint({
+        id: 'a',
+        kind: 'openai-compatible',
+        baseUrl: 'https://a.example.com/v1',
+        visionModel: 'va',
+      }),
+    );
+    saveEndpoint(
+      endpoint({
+        id: 'b',
+        kind: 'openai-compatible',
+        baseUrl: 'https://b.example.com/v1',
+        visionModel: 'vb',
+      }),
+    );
+    saveEndpoint(endpoint({ id: 'off', visionModel: 'vo', enabled: false }));
+
+    expect(getMangaEndpoint()!.model).toBe('va');
+
+    setActiveEndpointId('b');
+    expect(getMangaEndpoint()!.model).toBe('vb');
+
+    // The active id points at a disabled endpoint: the first enabled vision
+    // endpoint wins instead.
+    setActiveEndpointId('off');
+    expect(getMangaEndpoint()!.model).toBe('va');
   });
 });

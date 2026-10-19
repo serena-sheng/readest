@@ -32,6 +32,7 @@ import {
 import { getBaseFilename } from '@/utils/path';
 import { DEFAULT_FIXED_LAYOUT_VIEW_SETTINGS, SUPPORTED_LANGNAMES } from '@/services/constants';
 import { getComicViewDefaults, hasViewSettingOverrides, isComicFormat } from '@/utils/comic';
+import { detectCbzAdPages, detectCbzAdPagesFromFile } from '@/services/manga/adPages';
 import { useSettingsStore } from './settingsStore';
 import { BookData, useBookDataStore } from './bookDataStore';
 import { useLibraryStore } from './libraryStore';
@@ -225,6 +226,9 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
       let bookDoc = bookData?.bookDoc;
       let docFormat = bookData?.docFormat;
       let file: File | null = bookData?.file ?? null;
+      // Preserved across a re-open that reuses the parsed document; recomputed
+      // below when a CBZ is actually loaded.
+      let mangaStartPage = bookData?.mangaStartPage ?? 0;
       // Per-book config and the third-party annotation module are pure IO
       // with no dependency on the document load. Kick them off here so their
       // round trips overlap with the content fetch / document parsing below
@@ -277,7 +281,18 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
           }).open();
           bookDoc = doc.book;
           docFormat = doc.format;
-          if (doc.format === 'CBZ') config.widePages = getWidePages(bookDoc.sections);
+          if (doc.format === 'CBZ') {
+            config.widePages = getWidePages(bookDoc.sections);
+            // Only the first open decides where to start. A saved position
+            // (or a position past the first page) wins; detection failures
+            // return 0 and leave the original first-page behaviour.
+            const atStart = !config.location || (config.progress?.[0] ?? 2) <= 1;
+            if (atStart && (settings.globalReadSettings.mangaSkipAdPages ?? true)) {
+              mangaStartPage = nativeFilePath
+                ? await detectCbzAdPages(nativeFilePath, file)
+                : await detectCbzAdPagesFromFile(file);
+            }
+          }
         }
       }
       const config = await configPromise;
@@ -362,7 +377,16 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
 
       const isFixedLayout =
         bookDoc.rendition?.layout === 'pre-paginated' || FIXED_LAYOUT_FORMATS.has(book.format);
-      const newBookData: BookData = { id, book, file, config, bookDoc, docFormat, isFixedLayout };
+      const newBookData: BookData = {
+        id,
+        book,
+        file,
+        config,
+        bookDoc,
+        docFormat,
+        isFixedLayout,
+        mangaStartPage,
+      };
       useBookDataStore.setState((state) => ({
         booksData: {
           ...state.booksData,

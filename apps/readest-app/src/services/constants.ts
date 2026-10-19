@@ -326,6 +326,7 @@ export const DEFAULT_READSETTINGS: ReadSettings = {
   translationProvider: 'deepl',
   translateTargetLang: 'EN',
   wordLensAutoDownload: true,
+  mangaSkipAdPages: true,
 
   customThemes: [],
   handwritingColor: DEFAULT_HANDWRITING_COLOR,

@@ -12,6 +12,7 @@
 // instead of an exception. Without `LOCAL_UNLOCK` storage is never read at
 // all, which keeps upstream behaviour identical to the local service.
 
+import type { MangaVisionEndpoint } from '@/services/manga/types';
 import { LOCAL_UNLOCK } from '@/utils/localUnlock';
 
 export type TranslationEndpointKind = 'emm' | 'openai-compatible';
@@ -22,6 +23,12 @@ export type TranslationEndpoint = {
   kind: TranslationEndpointKind;
   baseUrl: string;
   model?: string;
+  /**
+   * A model served by the same endpoint that can read images. Set only when
+   * the provider offers a vision model; manga translation ignores endpoints
+   * without it.
+   */
+  visionModel?: string;
   apiKey?: string;
   enabled: boolean;
 };
@@ -76,6 +83,7 @@ const toEndpoint = (value: unknown): TranslationEndpoint | null => {
     kind: endpoint.kind,
     baseUrl: endpoint.baseUrl,
     ...(typeof endpoint.model === 'string' ? { model: endpoint.model } : {}),
+    ...(typeof endpoint.visionModel === 'string' ? { visionModel: endpoint.visionModel } : {}),
     ...(typeof endpoint.apiKey === 'string' ? { apiKey: endpoint.apiKey } : {}),
     enabled: typeof endpoint.enabled === 'boolean' ? endpoint.enabled : true,
   };
@@ -132,4 +140,30 @@ export const getActiveEndpoint = (): TranslationEndpoint => {
   if (enabled.length === 0) return { ...DEFAULT_TRANSLATION_ENDPOINT };
   const activeId = getActiveEndpointId();
   return enabled.find((endpoint) => endpoint.id === activeId) ?? enabled[0]!;
+};
+
+/**
+ * The endpoint manga translation should use, or null when none is configured
+ * for images. Only endpoints with a `visionModel` qualify: a provider that
+ * serves text is not assumed to serve vision on the same model name. The
+ * active endpoint wins when it qualifies, otherwise the first one does.
+ */
+export const getMangaEndpoint = (): MangaVisionEndpoint | null => {
+  const candidates = listEndpoints().filter(
+    (endpoint) => endpoint.enabled && Boolean(endpoint.visionModel?.trim()),
+  );
+  if (candidates.length === 0) return null;
+
+  const activeId = getActiveEndpointId();
+  const endpoint = candidates.find((candidate) => candidate.id === activeId) ?? candidates[0]!;
+  const baseUrl = endpoint.baseUrl.trim().replace(/\/+$/, '');
+  const model = endpoint.visionModel!.trim();
+  if (!baseUrl || !model) return null;
+
+  const apiKey = endpoint.apiKey?.trim();
+  return {
+    baseUrl,
+    model,
+    ...(apiKey ? { apiKey } : {}),
+  };
 };

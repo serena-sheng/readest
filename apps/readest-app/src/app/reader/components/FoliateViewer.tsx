@@ -880,7 +880,24 @@ const FoliateViewer: React.FC<{
       const overrideLocation = cfiParam && primaryId === thisId ? cfiParam : null;
 
       const lastLocation = overrideLocation ?? config.location;
-      if (lastLocation) {
+      // A comic with detected ad pages opens on its first real page, unless a
+      // saved position or a deep link points somewhere else. Detection already
+      // failed safe (0) upstream, and a failed jump falls back to the normal
+      // first-page/restored-position behaviour.
+      const startPage =
+        (settings.globalReadSettings.mangaSkipAdPages ?? true)
+          ? (bookData?.mangaStartPage ?? 0)
+          : 0;
+      const resumeAtStart = !config.location || (config.progress?.[0] ?? 2) <= 1;
+      if (!overrideLocation && startPage > 0 && resumeAtStart) {
+        try {
+          await view.goTo(startPage);
+        } catch (error) {
+          console.warn('Failed to skip comic ad pages:', error);
+          if (lastLocation) await view.init({ lastLocation });
+          else await view.goToFraction(0);
+        }
+      } else if (lastLocation) {
         await view.init({ lastLocation });
       } else {
         await view.goToFraction(0);
