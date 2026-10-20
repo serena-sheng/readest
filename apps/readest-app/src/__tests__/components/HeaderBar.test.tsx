@@ -31,20 +31,29 @@ vi.mock('@/store/themeStore', () => ({
 vi.mock('@/store/sidebarStore', () => ({
   useSidebarStore: () => ({ isSideBarVisible: false, getIsSideBarVisible: () => false }),
 }));
-vi.mock('@/store/readerStore', () => ({
-  useReaderStore: () => ({
+vi.mock('@/store/readerStore', () => {
+  const state = {
     bookKeys: ['book-1'],
     hoveredBookKey: 'book-1',
     getView: () => null,
     getViewSettings: () => ({ enableAnnotationQuickActions: false }),
     setHoveredBookKey: vi.fn(),
-  }),
-}));
+    viewStates: {},
+  };
+  const useReaderStore = () => state;
+  // The manga toggle reads the store imperatively; without this the header
+  // blows up on `getState is not a function`.
+  useReaderStore.getState = () => state;
+  return { useReaderStore };
+});
 let currentBookData: {
   book?: { title: string; metadata?: { series?: string; seriesIndex?: number } };
 } | null = null;
 vi.mock('@/store/bookDataStore', () => ({
   useBookDataStore: () => ({ getBookData: () => currentBookData, getConfig: () => null }),
+}));
+vi.mock('@/store/notebookStore', () => ({
+  useNotebookStore: () => ({ isNotebookVisible: false, toggleNotebook: vi.fn() }),
 }));
 vi.mock('@/store/trafficLightStore', () => ({
   useTrafficLightStore: () => ({
@@ -72,9 +81,38 @@ vi.mock('@/app/reader/components/BookmarkToggler', () => ({ default: () => null 
 vi.mock('@/app/reader/components/NotebookToggler', () => ({ default: () => null }));
 vi.mock('@/app/reader/components/TranslationToggler', () => ({ default: () => null }));
 vi.mock('@/app/reader/components/ViewMenu', () => ({ default: () => null }));
+vi.mock('@/app/reader/components/TranslationExpertPanel', () => ({ default: () => null }));
+vi.mock('@/app/reader/components/AskLocalPanel', () => ({ default: () => null }));
+vi.mock('@/app/reader/components/TypesetPanel', () => ({ default: () => null }));
+vi.mock('@/app/reader/components/IdeasPanel', () => ({ default: () => null }));
 vi.mock('@/app/reader/components/SyncInfoDialog', () => ({ default: () => null }));
-vi.mock('@/components/WindowButtons', () => ({ default: () => null }));
-vi.mock('@/components/Dropdown', () => ({ default: () => null }));
+// The right cluster is measured across the expanded `…` menu, so the dropdown
+// renders its toggle and rows instead of swallowing them.
+vi.mock('@/components/Dropdown', () => ({
+  default: ({
+    label,
+    toggleButton,
+    children,
+  }: {
+    label: string;
+    toggleButton?: React.ReactNode;
+    children?: React.ReactNode;
+  }) => (
+    <div className='dropdown-container'>
+      <button type='button' aria-label={label}>
+        {toggleButton}
+      </button>
+      <div>{children}</div>
+    </div>
+  ),
+}));
+vi.mock('@/components/WindowButtons', () => ({
+  default: ({ closeButtonLabel }: { closeButtonLabel?: string }) => (
+    <button type='button' aria-label={closeButtonLabel}>
+      {closeButtonLabel}
+    </button>
+  ),
+}));
 vi.mock('@/components/ModalPortal', () => ({ default: () => null }));
 
 const setViewport = (width: number, height: number) => {
@@ -183,5 +221,33 @@ describe('HeaderBar book metadata data attributes (#5776)', () => {
     expect(title.getAttribute('data-book-title')).toBe('Book');
     expect(title.hasAttribute('data-book-series')).toBe(false);
     expect(title.hasAttribute('data-book-series-index')).toBe(false);
+  });
+});
+
+describe('HeaderBar right cluster', () => {
+  it('keeps only the more menu and close', () => {
+    useEnvMock.mockReturnValue({ envConfig: {}, appService: { isMobile: false } });
+    setViewport(1440, 900);
+    const { container } = renderHeader();
+    const end = container.querySelector('.header-tools-end') as HTMLElement;
+    const toolbarButtons = Array.from(end.querySelectorAll('button')).filter(
+      (button) => button.getAttribute('role') !== 'menuitem',
+    );
+
+    expect(toolbarButtons.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'View Options',
+      'Close Book',
+    ]);
+  });
+
+  it('moved the five former toolbar tools into the menu', () => {
+    useEnvMock.mockReturnValue({ envConfig: {}, appService: { isMobile: false } });
+    setViewport(1440, 900);
+    renderHeader();
+
+    for (const name of ['译文设置', '问书', '排版', '想法', 'Notebook']) {
+      expect(screen.getByRole('menuitem', { name })).toBeTruthy();
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    }
   });
 });

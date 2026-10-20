@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React from 'react';
 import { MdOutlineQuestionAnswer } from 'react-icons/md';
 
-import { useReaderStore } from '@/store/readerStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import Button from '@/components/Button';
-import { eventDispatcher } from '@/utils/event';
-import AskLocalPanel from './AskLocalPanel';
+import { useAskLocalPanel } from '../hooks/useReaderTools';
 
 interface AskLocalTogglerProps {
   bookKey: string;
@@ -18,54 +15,17 @@ interface AskLocalTogglerProps {
 
 const AskLocalToggler: React.FC<AskLocalTogglerProps> = ({ bookKey, title }) => {
   const _ = useTranslation();
-  const { getView } = useReaderStore();
   const iconSize18 = useResponsiveSize(18);
-  const [isOpen, setIsOpen] = useState(false);
-  const [selection, setSelection] = useState('');
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  // The selection pill opens its own panel for the captured text. Close this
-  // one first so two panels never share the fixed drawer.
-  useEffect(() => {
-    const close = (event: CustomEvent) => {
-      if (event.detail?.bookKey === bookKey) setIsOpen(false);
-    };
-    eventDispatcher.on('ask-local-close', close);
-    return () => eventDispatcher.off('ask-local-close', close);
-  }, [bookKey]);
-
-  const handleToggle = () => {
-    if (!isOpen) {
-      // The expert drawer shares this right-hand slot; `ideas-close` is the
-      // signal it listens to when another drawer takes over.
-      eventDispatcher.dispatch('ideas-close', { bookKey });
-      const docs = getView(bookKey)?.renderer.getContents() ?? [];
-      setSelection(
-        docs.reduce((text, { doc }) => text || (doc?.getSelection()?.toString().trim() ?? ''), ''),
-      );
-    }
-    setIsOpen(!isOpen);
-  };
+  const { toggle, panel } = useAskLocalPanel({ bookKey, title });
 
   return (
     <>
       <Button
         icon={<MdOutlineQuestionAnswer size={iconSize18} className='fill-base-content' />}
-        onClick={handleToggle}
+        onClick={toggle}
         label={_('问书')}
       />
-      {mounted &&
-        createPortal(
-          <AskLocalPanel
-            title={title}
-            selection={selection}
-            open={isOpen}
-            onClose={() => setIsOpen(false)}
-          />,
-          document.body,
-        )}
+      {panel}
     </>
   );
 };

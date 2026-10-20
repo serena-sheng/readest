@@ -8,6 +8,8 @@ import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 interface MenuItemProps {
   label: string;
   toggled?: boolean;
+  /** Explicit accessible name for rows whose label alone is ambiguous. */
+  ariaLabel?: string;
   description?: string;
   tooltip?: string;
   buttonClass?: string;
@@ -28,6 +30,7 @@ interface MenuItemProps {
 const MenuItem: React.FC<MenuItemProps> = ({
   label,
   toggled,
+  ariaLabel,
   description,
   tooltip,
   buttonClass,
@@ -141,7 +144,8 @@ const MenuItem: React.FC<MenuItemProps> = ({
       <button
         role={disabled ? 'none' : 'menuitem'}
         aria-label={
-          toggled !== undefined ? `${label} - ${toggled ? _('ON') : _('OFF')}` : undefined
+          ariaLabel ??
+          (toggled !== undefined ? `${label} - ${toggled ? _('ON') : _('OFF')}` : undefined)
         }
         aria-live={toggled === undefined ? 'polite' : 'off'}
         tabIndex={disabled ? -1 : 0}

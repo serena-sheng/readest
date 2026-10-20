@@ -29,15 +29,10 @@ import WindowButtons from '@/components/WindowButtons';
 import QuickActionMenu from './annotator/QuickActionMenu';
 import SidebarToggler from './SidebarToggler';
 import BookmarkToggler from './BookmarkToggler';
-import NotebookToggler from './NotebookToggler';
 import TranslationToggler from './TranslationToggler';
 import MangaTranslateToggler from './manga/MangaTranslateToggler';
-import ViewMenu from './ViewMenu';
+import ReaderMoreMenu from './ReaderMoreMenu';
 import SyncInfoDialog from './SyncInfoDialog';
-import AskLocalToggler from './AskLocalToggler';
-import IdeasToggler from './IdeasToggler';
-import TranslationExpertToggler from './TranslationExpertToggler';
-import TypesetToggler from './TypesetToggler';
 
 interface HeaderBarProps {
   bookKey: string;
@@ -337,11 +332,6 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
         </div>
 
         <div className='header-tools-end bg-base-100 z-20 ms-auto flex h-full min-w-max items-center gap-x-4 ps-2 max-[350px]:gap-x-2'>
-          <TranslationExpertToggler bookKey={bookKey} title={bookTitle} />
-          <AskLocalToggler bookKey={bookKey} title={bookTitle} />
-          <TypesetToggler bookKey={bookKey} title={bookTitle} />
-          <IdeasToggler bookKey={bookKey} title={bookTitle} />
-          <NotebookToggler bookKey={bookKey} />
           <Dropdown
             label={_('View Options')}
             containerClassName='h-8'
@@ -350,8 +340,9 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
             toggleButton={<MdOutlineMenu />}
             onToggle={handleToggleDropdown}
           >
-            <ViewMenu
+            <ReaderMoreMenu
               bookKey={bookKey}
+              title={bookTitle}
               onShowMetaHashDialog={() => setIsMetaHashDialogOpen(true)}
             />
           </Dropdown>

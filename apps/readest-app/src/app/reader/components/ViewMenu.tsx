@@ -45,12 +45,15 @@ import Menu from '@/components/Menu';
 
 interface ViewMenuProps {
   bookKey: string;
+  /** Render only the rows, letting an enclosing menu own the container. */
+  bare?: boolean;
   setIsDropdownOpen?: (open: boolean) => void;
   onShowMetaHashDialog?: () => void;
 }
 
 const ViewMenu: React.FC<ViewMenuProps> = ({
   bookKey,
+  bare = false,
   setIsDropdownOpen,
   onShowMetaHashDialog,
 }) => {
@@ -311,15 +314,8 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rtlSpread]);
 
-  return (
-    <Menu
-      className={clsx(
-        'view-menu dropdown-content dropdown-right no-triangle z-20 mt-1.5 border',
-        'bgcolor-base-200 shadow-2xl',
-      )}
-      style={{ marginRight: appService?.isMobile || window.innerWidth < 640 ? '-36px' : 0 }}
-      onCancel={() => setIsDropdownOpen?.(false)}
-    >
+  const content = (
+    <>
       {bookData.bookDoc?.rendition?.layout === 'pre-paginated' && (
         <>
           <div
@@ -610,6 +606,23 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
       <hr aria-hidden='true' className='border-base-300 my-1' />
 
       <MenuItem label={_('Share Book')} Icon={IoShareOutline} onClick={handleShare} />
+    </>
+  );
+
+  // The reader's `…` menu embeds these rows under its own container so the
+  // tools and view options read as one menu; standalone callers keep the Menu.
+  if (bare) return content;
+
+  return (
+    <Menu
+      className={clsx(
+        'view-menu dropdown-content dropdown-right no-triangle z-20 mt-1.5 border',
+        'bgcolor-base-200 shadow-2xl',
+      )}
+      style={{ marginRight: appService?.isMobile || window.innerWidth < 640 ? '-36px' : 0 }}
+      onCancel={() => setIsDropdownOpen?.(false)}
+    >
+      {content}
     </Menu>
   );
 };
