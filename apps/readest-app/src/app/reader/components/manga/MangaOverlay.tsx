@@ -27,20 +27,31 @@ const MIN_DANMAKU_IMAGE_WIDTH = 120;
 const DANMAKU_FONT_SIZE = 15;
 const NARROW_DANMAKU_FONT_SIZE = 13;
 const NARROW_GUTTER_WIDTH = 90;
-const DANMAKU_LINE_HEIGHT = 1.65;
+const DANMAKU_LINE_HEIGHT = 1.75;
 const DANMAKU_GAP = 6;
-/** Air between a pill's artwork-facing edge and the page image. */
+/** Air between a chip's artwork-facing edge and the page image. */
 const CHIP_IMAGE_GAP = 8;
 const CHIP_PADDING_X = 6;
 const CHIP_PADDING_Y = 3;
-const CHIP_BORDER_LEFT = 3;
+/** Width of the rule that marks a translation as marginalia. */
+const CHIP_RULE_WIDTH = 2;
+/** Translation chips read as marginalia: bare text, no card behind it. */
+const CHIP_TRANSLATION_BACKGROUND = 'transparent';
+/** E-ink cannot composite translucency, so its chips keep an opaque fill. */
+const CHIP_EINK_BACKGROUND = 'rgba(255, 255, 255, 0.9)';
+/** Wrap width past which a marginal note stops being a note. */
+const CHIP_MAX_TEXT_WIDTH = 'min(22em, 100%)';
+const UI_FONT_STACK =
+  'system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif';
 const SCROLL_HINT_HEIGHT = 22;
 const SCROLL_HINT_THRESHOLD = 6;
-/** Pill state: the translation, or the bubble's original text. */
+/** Chip state: the translation, or the bubble's original text. */
 const CHIP_BADGE_TEXT = '原';
 const CHIP_SOURCE_BACKGROUND = 'rgba(255, 255, 255, 0.72)';
 const CHIP_SOURCE_COLOR = '#6B5360';
-const CHIP_BADGE_COLOR = '#C81E57';
+const CHIP_BADGE_COLOR = 'var(--color-primary, #305F4B)';
+const CHIP_RULE_COLOR = 'var(--color-primary, #305F4B)';
+const CHIP_TEXT_COLOR = 'var(--color-base-content, #1d1d1f)';
 
 export type MangaOverlayMode = 'bubble' | 'danmaku';
 
@@ -154,7 +165,7 @@ export const estimateMangaDanmakuChipHeight = (
   gutterWidth: number,
   fontSize: number = DANMAKU_FONT_SIZE,
 ): number => {
-  const innerWidth = Math.max(1, gutterWidth - CHIP_PADDING_X * 2 - CHIP_BORDER_LEFT);
+  const innerWidth = Math.max(1, gutterWidth - CHIP_PADDING_X * 2 - CHIP_RULE_WIDTH);
   const charsPerLine = Math.max(1, Math.floor(innerWidth / fontSize));
   const lines = Math.max(1, Math.ceil(Array.from(text).length / charsPerLine));
   return lines * fontSize * DANMAKU_LINE_HEIGHT + CHIP_PADDING_Y * 2;
@@ -402,6 +413,7 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       view.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const mid = naturalWidth / 2;
+    const translationBackground = isEink ? CHIP_EINK_BACKGROUND : CHIP_TRANSLATION_BACKGROUND;
     const items = result.bubbles.map((bubble) => {
       const [x1, y1, x2, y2] = bubble.box;
       const side: DanmakuSide = (x1 + x2) / 2 < mid ? 'left' : 'right';
@@ -412,31 +424,27 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       chip.title = bubble.dst;
       chip.style.position = 'absolute';
       chip.style.boxSizing = 'border-box';
-      // Pills hug their text and the image edge instead of stretching across
-      // the whole gutter, which read as a full-width bar at 100% zoom.
+      // Marginalia hug their text and the image edge instead of stretching
+      // across the whole gutter, which read as a full-width bar at 100% zoom.
       chip.style.width = 'max-content';
-      chip.style.maxWidth = '100%';
+      chip.style.maxWidth = CHIP_MAX_TEXT_WIDTH;
       chip.style.fontSize = `${DANMAKU_FONT_SIZE}px`;
       chip.style.lineHeight = `${DANMAKU_LINE_HEIGHT}`;
-      // White glass with a magenta spine, legible over any manga artwork.
-      chip.style.color = '#3A2230';
-      chip.style.background = isDarkMode
-        ? 'rgba(255, 255, 255, 0.94)'
-        : 'rgba(255, 255, 255, 0.9)';
-      if (!isEink) {
-        chip.style.backdropFilter = 'blur(10px)';
-        chip.style.setProperty('-webkit-backdrop-filter', 'blur(10px)');
-      }
-      chip.style.boxShadow = isEink ? 'none' : '0 1px 4px rgba(0, 0, 0, 0.18)';
-      chip.style.border = isEink ? '1px solid rgba(58, 34, 48, 0.35)' : '';
-      chip.style.borderRadius = '6px';
+      chip.style.fontFamily = UI_FONT_STACK;
+      chip.style.setProperty('text-wrap', 'pretty');
+      // A translation is a note in the margin, not a card on the artwork: the
+      // text sits directly on the stage and only a rule separates it from the
+      // page. No shadow and no blur, so nothing is lifted off the paper.
+      chip.style.color = CHIP_TEXT_COLOR;
+      chip.style.background = translationBackground;
+      if (isEink) chip.style.border = '1px solid rgba(58, 34, 48, 0.35)';
       chip.style.padding = `${CHIP_PADDING_Y}px ${CHIP_PADDING_X}px`;
       chip.style.maxHeight = 'none';
       chip.style.overflow = 'visible';
       chip.style.overflowWrap = 'anywhere';
       chip.style.whiteSpace = 'pre-wrap';
 
-      // The pill toggles between the translation and the bubble's original
+      // The chip toggles between the translation and the bubble's original
       // text. It is absolutely positioned inside the fixed-height gutter, so
       // its own content change can never reflow the page or the gutters.
       const badge = doc.createElement('span');
@@ -445,13 +453,15 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       badge.setAttribute('aria-hidden', 'true');
       badge.textContent = CHIP_BADGE_TEXT;
       badge.style.position = 'absolute';
-      // Tag the pill's top-left corner without stealing room from the text.
-      badge.style.top = '-6px';
-      badge.style.left = '-3px';
+      // Hang the tag on the chip's own leading edge instead of pushing it
+      // outside, where it used to float in the margin.
+      badge.style.top = '0';
+      badge.style.setProperty('inset-inline-start', '0');
+      badge.style.transform = 'translateY(-50%)';
       badge.style.padding = '0 2px';
       badge.style.borderRadius = '3px';
-      badge.style.background = 'rgba(255, 255, 255, 0.95)';
-      badge.style.fontSize = '10px';
+      badge.style.background = 'var(--color-base-100, #FBFAF7)';
+      badge.style.fontSize = '11px';
       badge.style.lineHeight = '1.1';
       badge.style.color = CHIP_BADGE_COLOR;
       badge.style.pointerEvents = 'none';
@@ -477,12 +487,8 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
         chip.setAttribute('aria-label', showingSource ? '显示译文' : '显示原文');
         chip.dataset['state'] = showingSource ? 'source' : 'translation';
         badge.style.display = showingSource ? '' : 'none';
-        chip.style.background = showingSource
-          ? CHIP_SOURCE_BACKGROUND
-          : isDarkMode
-            ? 'rgba(255, 255, 255, 0.94)'
-            : 'rgba(255, 255, 255, 0.9)';
-        chip.style.color = showingSource ? CHIP_SOURCE_COLOR : '#3A2230';
+        chip.style.background = showingSource ? CHIP_SOURCE_BACKGROUND : translationBackground;
+        chip.style.color = showingSource ? CHIP_SOURCE_COLOR : CHIP_TEXT_COLOR;
         chip.title = showingSource ? bubble.dst : bubble.src;
       };
       const toggleChip = () => {
@@ -588,7 +594,6 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       const renderedHeight = Math.max(0, geometry.imageHeight);
       const narrowGutter = gutterWidth < NARROW_GUTTER_WIDTH;
       const chipFontSize = narrowGutter ? NARROW_DANMAKU_FONT_SIZE : DANMAKU_FONT_SIZE;
-      const chipBorderWidth = narrowGutter ? 2 : CHIP_BORDER_LEFT;
       const imageRight = geometry.imageLeft + geometry.imageWidth;
       // Each column ends exactly on the image edge and grows outwards, so a
       // pill 8px from that edge always lands 8px from the artwork.
@@ -626,12 +631,17 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
 
       items.forEach((item) => {
         item.el.style.fontSize = `${chipFontSize}px`;
-        // The spine always faces the artwork: its right edge in the left
-        // column, its left edge in the right column.
-        item.el.style.borderLeft =
-          item.side === 'right' ? `${chipBorderWidth}px solid #F0457E` : 'none';
-        item.el.style.borderRight =
-          item.side === 'left' ? `${chipBorderWidth}px solid #F0457E` : 'none';
+        // The rule always faces the artwork: its right edge in the left
+        // column, its left edge in the right column, and the rounded corners
+        // on that same leading edge. Longhands keep the `var()` colour intact.
+        const ruleOnLeft = item.side === 'right';
+        item.el.style.borderLeftWidth = ruleOnLeft ? `${CHIP_RULE_WIDTH}px` : '0';
+        item.el.style.borderLeftStyle = ruleOnLeft ? 'solid' : 'none';
+        item.el.style.borderLeftColor = ruleOnLeft ? CHIP_RULE_COLOR : '';
+        item.el.style.borderRightWidth = ruleOnLeft ? '0' : `${CHIP_RULE_WIDTH}px`;
+        item.el.style.borderRightStyle = ruleOnLeft ? 'none' : 'solid';
+        item.el.style.borderRightColor = ruleOnLeft ? '' : CHIP_RULE_COLOR;
+        item.el.style.borderRadius = item.side === 'left' ? '0 2px 2px 0' : '2px 0 0 2px';
         if (item.side === 'left') {
           item.el.style.left = 'auto';
           item.el.style.right = `${CHIP_IMAGE_GAP}px`;
@@ -696,7 +706,7 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       hints.right.bottom.remove();
       restoreImage();
     };
-  }, [imageEl, layerEl, mode, result, bubbleCount, isDarkMode]);
+  }, [imageEl, layerEl, mode, result, bubbleCount]);
 
   if (bubbleCount === 0 || !layerEl) return null;
   if (mode === 'danmaku') return null;
@@ -737,11 +747,12 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
               justifyContent: 'center',
               boxSizing: 'border-box',
               padding: `${BUBBLE_PADDING}px`,
-              background: isDarkMode ? 'rgba(17, 17, 17, 0.92)' : 'rgba(255, 255, 255, 0.92)',
+              background: isDarkMode ? 'rgba(17, 17, 17, 0.92)' : 'rgba(255, 255, 255, 0.96)',
               color: isDarkMode ? '#f5f5f5' : '#111111',
               borderRadius: '3px',
               fontSize: `${fontSize}px`,
               lineHeight: LINE_HEIGHT,
+              fontFamily: UI_FONT_STACK,
               overflow: 'hidden',
               wordBreak: 'break-word',
               textAlign: 'center',

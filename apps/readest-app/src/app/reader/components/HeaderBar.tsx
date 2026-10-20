@@ -251,7 +251,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           }
         }}
       >
-        <div className='header-tools-start bg-base-100 sidebar-bookmark-toggler z-20 flex h-full min-w-0 items-center gap-x-4 pe-2 max-[350px]:gap-x-2'>
+        <div className='header-tools-start bg-base-100 sidebar-bookmark-toggler z-20 flex h-full min-w-0 items-center gap-x-1 pe-2 max-[350px]:gap-x-2'>
           {/* h-full so this scroller spans the whole bar: `overflow-x-auto`
               also clips vertically, and shrink-wrapped to the 32px icons it
               cut the buttons' touch halos back down to 32px (#5401). */}
@@ -261,7 +261,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
               `scrollbar-width: none` alone does not remove that strip.
               px-1.5 reserves the 6px each 44px halo extends past its 32px
               button, so the halos do not create a draggable scroll range. */}
-          <div className='no-scrollbar flex h-full min-w-0 items-center gap-x-4 overflow-x-auto px-1.5 max-[350px]:gap-x-2'>
+          <div className='no-scrollbar flex h-full min-w-0 items-center gap-x-1 overflow-x-auto px-1.5 max-[350px]:gap-x-2'>
             {/* Tablet portrait runs the mobile footer bar, whose TOC tab opens
                 this same sidebar — showing the toggle here too gave one action
                 two buttons (#5634). Phones are already covered by `sm:`. */}
@@ -323,18 +323,14 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           role='contentinfo'
           aria-label={_('Title') + ' - ' + bookTitle}
           className={clsx(
-            'header-title z-15 bg-base-100 pointer-events-none hidden flex-1 items-center justify-center sm:flex',
-            !windowButtonVisible && 'absolute inset-0',
+            'header-title z-15 bg-base-100 pointer-events-none hidden min-w-0 flex-1 items-center justify-start sm:flex',
             isHeaderCompact && 'hidden!',
           )}
           {...getBookDataAttributes(bookTitle, bookData?.book?.metadata)}
         >
           <div
             aria-hidden='true'
-            className={clsx(
-              'line-clamp-1 text-center text-xs font-semibold',
-              !windowButtonVisible && 'max-w-[50%]',
-            )}
+            className='line-clamp-1 text-left text-[13px] font-medium'
           >
             {bookTitle}
           </div>

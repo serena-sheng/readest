@@ -143,7 +143,7 @@ const MangaCoachMark: React.FC<MangaCoachMarkProps> = ({
         borderRadius: '10px',
         background: 'rgba(255, 255, 255, 0.98)',
         color: '#3A2230',
-        border: '1px solid rgba(200, 30, 87, 0.22)',
+        border: '1px solid color-mix(in srgb, var(--color-primary) 22%, transparent)',
         boxShadow: '0 12px 32px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08)',
       }}
     >
@@ -172,7 +172,7 @@ const MangaCoachMark: React.FC<MangaCoachMarkProps> = ({
           style={{
             border: 'none',
             borderRadius: '6px',
-            background: '#C81E57',
+            background: 'var(--color-primary)',
             color: '#fff',
             fontSize: '12px',
             padding: '4px 10px',

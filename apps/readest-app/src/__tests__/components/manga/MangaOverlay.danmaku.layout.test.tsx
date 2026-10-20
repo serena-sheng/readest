@@ -143,19 +143,19 @@ describe('MangaOverlay danmaku layout against the image box', () => {
       parseFloat(leftGutter.style.left) + parseFloat(leftGutter.style.width) -
       parseFloat(leftChip.style.right);
     expect(leftPillRight).toBe(imageLeft - 8);
-    expect(leftChip.style.borderRightWidth).toBe('3px');
+    expect(leftChip.style.borderRightWidth).toBe('2px');
     expect(leftChip.style.borderRightStyle).toBe('solid');
     expect(leftChip.style.borderLeftStyle).toBe('none');
 
     const rightGutter = gutter('right')!;
     const rightPillLeft = parseFloat(rightGutter.style.left) + parseFloat(rightChip.style.left);
     expect(rightPillLeft).toBe(imageRight + 8);
-    expect(rightChip.style.borderLeftWidth).toBe('3px');
+    expect(rightChip.style.borderLeftWidth).toBe('2px');
     expect(rightChip.style.borderLeftStyle).toBe('solid');
     expect(rightChip.style.borderRightStyle).toBe('none');
 
     expect(leftChip.style.fontSize).toBe('15px');
-    expect(leftChip.style.lineHeight).toBe('1.65');
+    expect(leftChip.style.lineHeight).toBe('1.75');
   });
 
   it('narrows the image by exactly two gutter widths when space is tight', async () => {
@@ -203,14 +203,15 @@ describe('MangaOverlay danmaku layout against the image box', () => {
     expect(el.style.padding).toBe('3px 6px');
   });
 
-  it('uses an opaque white chip in dark mode', async () => {
+  it('keeps the marginalia transparent in dark mode', async () => {
     useThemeStore.setState({ isDarkMode: true });
     setup({ containerWidth: 800, imageLeft: 265, imageWidth: 270, imageHeight: 400 });
 
     renderDanmaku();
     await screen.findByText('译文');
 
-    expect(chip()?.style.background).toBe('rgba(255, 255, 255, 0.94)');
+    expect(chip()?.style.background).toBe('transparent');
+    expect(chip()?.style.boxShadow).toBe('');
   });
 
   it('drops to 13px and a 2px spine in a narrow gutter', async () => {
@@ -222,7 +223,7 @@ describe('MangaOverlay danmaku layout against the image box', () => {
     // (200 - 120) / 2 = 40px gutter, below the 90px comfortable width.
     expect(gutter('left')?.style.width).toBe('40px');
     expect(chip()?.style.fontSize).toBe('13px');
-    expect(chip()?.style.lineHeight).toBe('1.65');
+    expect(chip()?.style.lineHeight).toBe('1.75');
     expect(chip()?.style.borderRightWidth).toBe('2px');
     expect(chip()?.style.borderLeftStyle).toBe('none');
   });

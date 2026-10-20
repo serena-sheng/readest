@@ -7,7 +7,6 @@ import { PiChatTeardropText, PiImageSquare, PiSidebarSimple } from 'react-icons/
 
 import type { FoliateView } from '@/types/view';
 import type { MangaTranslationMode } from '@/types/book';
-import { useThemeStore } from '@/store/themeStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { eventDispatcher } from '@/utils/event';
@@ -83,7 +82,6 @@ export const computeMangaMenuPosition = (
  */
 const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, view }) => {
   const _ = useTranslation();
-  const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const setSettingsDialogOpen = useSettingsStore((state) => state.setSettingsDialogOpen);
   const setSettingsDialogBookKey = useSettingsStore((state) => state.setSettingsDialogBookKey);
 
@@ -209,7 +207,7 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
   if (!seenImage && !available) return null;
 
   const disabled = !available;
-  const accent = isDarkMode ? '#FF7BA6' : '#C81E57';
+  const accent = 'var(--color-primary)';
   const iconSize = 18;
   const active = mode !== 'off';
   const ModeIcon =
@@ -264,7 +262,7 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
               <span
                 aria-hidden='true'
                 className='absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full ring-2 ring-base-100'
-                style={{ backgroundColor: '#F0457E' }}
+                style={{ backgroundColor: accent }}
               />
             )
           )}

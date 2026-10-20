@@ -127,6 +127,23 @@ describe('MangaOverlay', () => {
     expect(bubble.getAttribute('style')).toContain('rgba(17, 17, 17, 0.92)');
   });
 
+  it('paints the light bubble near-white in the reader UI font', async () => {
+    render(
+      <MangaOverlay
+        imageEl={image}
+        result={resultWith([
+          { box: [100, 200, 300, 400], src: '原文', dst: '译文', vertical: false },
+        ])}
+      />,
+    );
+
+    const bubble = await screen.findByText('译文');
+    expect(bubble.getAttribute('style')).toContain('rgba(255, 255, 255, 0.96)');
+    expect(bubble.style.fontFamily).toContain('PingFang SC');
+    // Bubble mode keeps its tighter 1.5 leading; only the margin chips relax it.
+    expect(bubble.style.lineHeight).toBe('1.5');
+  });
+
   it('renders no layer when there are no bubbles', () => {
     render(<MangaOverlay imageEl={image} result={resultWith([])} />);
 
