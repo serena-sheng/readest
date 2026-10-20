@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 
 import { useTextTranslation } from '@/app/reader/hooks/useTextTranslation';
 import { eventDispatcher } from '@/utils/event';
@@ -151,24 +151,36 @@ describe('useTextTranslation cache integration', () => {
     expect(tint?.textContent).toBe('Marker paragraph');
   });
 
-  test('reports progress and completion through the hint channel', async () => {
+  test('reports progress through the task status and leaves success silent', async () => {
+    let resolveTranslate!: (texts: string[]) => void;
+    mocks.translate.mockImplementation(
+      () =>
+        new Promise<string[]>((resolve) => {
+          resolveTranslate = resolve;
+        }),
+    );
     const dispatch = vi.spyOn(eventDispatcher, 'dispatch');
     const view = createView(['Progress paragraph']);
 
-    renderHook(() => useTextTranslation(BOOK_KEY, view));
+    const { result } = renderHook(() => useTextTranslation(BOOK_KEY, view));
+
+    await waitFor(() => {
+      expect(result.current.status?.kind).toBe('progress');
+    });
+
+    await act(async () => {
+      resolveTranslate(['Translated: Progress paragraph']);
+    });
 
     await waitFor(() => {
       expect(view.querySelector('.translation-target')).toBeTruthy();
+      expect(result.current.status).toBeNull();
     });
 
-    const hints = dispatch.mock.calls
-      .filter(([name]) => name === 'hint')
-      .map(([, detail]) => (detail as { message: string }).message);
-    expect(hints.some((message) => message.startsWith('Translating '))).toBe(true);
-    expect(hints.some((message) => message.startsWith('Translation ready'))).toBe(true);
+    const hints = dispatch.mock.calls.filter(([name]) => name === 'hint');
+    expect(hints).toEqual([]);
     dispatch.mockRestore();
   });
-
 
   test('never sends a filename to the translator', async () => {
     const view = createView(['page03.png']);

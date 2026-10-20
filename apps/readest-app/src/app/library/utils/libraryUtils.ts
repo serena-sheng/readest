@@ -387,7 +387,7 @@ export const convertPagesToTimeRemainingMinutes = (
 
 /**
  * Minutes a book still needs, or `undefined` when its tile shows no time at all.
- * Finished, on-hold and unread books render a status badge instead of a time (see
+ * Finished, on-hold and unread books render a status label instead of a time (see
  * `ReadingProgress`), even when they still have pages left — so they have no time
  * to sort by. Sorting and the label must agree on this, hence the shared helper.
  */

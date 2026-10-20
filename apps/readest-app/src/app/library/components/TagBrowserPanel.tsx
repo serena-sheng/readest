@@ -368,7 +368,7 @@ const TagBrowserPanel: React.FC<TagBrowserPanelProps> = ({ open, onClose }) => {
                     onClick={(event) => handleTagClick(tag, event.shiftKey || event.altKey)}
                   >
                     <span className='truncate'>{tag.name}</span>
-                    <span className='text-[10px] opacity-50'>{tag.count}</span>
+                    <span className='text-[11px] tabular-nums opacity-50'>{tag.count}</span>
                   </button>
                 ))}
               </div>

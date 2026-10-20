@@ -23,6 +23,7 @@ import { useCapturedTurn, applyPageTurnAttributes } from '../hooks/useCapturedTu
 import { useBrightnessGesture } from '../hooks/useBrightnessGesture';
 import { registerBookmarkPullDoc } from '../utils/bookmarkPullGesture';
 import BrightnessOverlay from './BrightnessOverlay';
+import TaskStatusBar from './TaskStatusBar';
 import { usePagination, viewPagination } from '../hooks/usePagination';
 import { useFoliateEvents } from '../hooks/useFoliateEvents';
 import { useProgressSync } from '../hooks/useProgressSync';
@@ -220,7 +221,13 @@ const FoliateViewer: React.FC<{
   const { syncState, conflictDetails, resolveWithLocal, resolveWithRemote } = useKOSync(bookKey);
   const bookOrbitSync = useKOSync(bookKey, bookOrbitProgressProvider);
   useFileSync(bookKey);
-  useTextTranslation(bookKey, viewRef.current);
+  const translationTask = useTextTranslation(bookKey, viewRef.current);
+  const openTranslationServiceSettings = useCallback(() => {
+    const settingsStore = useSettingsStore.getState();
+    settingsStore.setSettingsDialogBookKey(bookKey);
+    settingsStore.setActiveSettingsItemId('settings.language.translationProvider');
+    settingsStore.setSettingsDialogOpen(true);
+  }, [bookKey]);
 
   // Coalesce setProgress writes within a single animation frame.
   //
@@ -1263,6 +1270,11 @@ const FoliateViewer: React.FC<{
         />
       )}
       <ExternalLinkConfirm view={viewRef.current} />
+      <TaskStatusBar
+        status={translationTask.status}
+        onRetry={translationTask.retry}
+        errorAction={{ label: _('检查服务地址'), onClick: openTranslationServiceSettings }}
+      />
       <div
         ref={containerRef}
         role='main'

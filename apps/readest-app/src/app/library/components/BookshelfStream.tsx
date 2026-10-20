@@ -429,7 +429,7 @@ export default function BookshelfStream({
                     className={clsx(
                       'bookshelf-items transform-wrapper grid',
                       // List rows carry their own responsive side padding.
-                      definition.layout === 'grid' && 'gap-x-4 px-4 sm:gap-x-0 sm:px-2',
+                      definition.layout === 'grid' && 'gap-x-6 px-6',
                     )}
                     style={{
                       gridTemplateColumns: `repeat(${definition.layout === 'grid' ? columns : 1}, minmax(0, 1fr))`,

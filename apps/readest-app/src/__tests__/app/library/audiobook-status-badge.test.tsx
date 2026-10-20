@@ -41,27 +41,27 @@ afterEach(cleanup);
 describe('audiobook status on library cards', () => {
   for (const format of ['ABS', 'OPDSAUDIO', 'BOOKORBIT'] as const) {
     for (const mode of ['grid', 'list'] as const) {
-      it(`shows the Finished badge instead of -0s for ${format} in ${mode}`, () => {
+      it(`shows the Finished meta line instead of -0s for ${format} in ${mode}`, () => {
         render(<BookItem {...props} book={{ ...book, format }} mode={mode} />);
-        expect(screen.getByRole('status').textContent).toBe('Finished');
+        expect(screen.getByRole('status').textContent).toBe('Finished · 100%');
         expect(screen.queryByText('-0s')).toBeNull();
         expect(screen.getByLabelText('Audiobook')).toBeTruthy();
       });
     }
   }
-  it('updates the badge when status changes, even before playback reaches the end', () => {
+  it('updates the meta line when status changes, even before playback reaches the end', () => {
     const playing: Book = { ...book, progress: [1800, 3600], readingStatus: 'reading' };
     const { rerender } = render(<BookItem {...props} book={playing} mode='grid' />);
     expect(screen.getByRole('status').textContent).toBe('-30m');
     rerender(<BookItem {...props} book={{ ...playing, readingStatus: 'finished' }} mode='grid' />);
-    expect(screen.getByRole('status').textContent).toBe('Finished');
+    expect(screen.getByRole('status').textContent).toBe('Finished · 100%');
     expect(screen.queryByText('-30m')).toBeNull();
     rerender(<BookItem {...props} book={{ ...playing, readingStatus: undefined }} mode='grid' />);
     expect(screen.getByRole('status').textContent).toBe('-30m');
   });
-  it('shows the Finished badge without any playback progress', () => {
+  it('shows the Finished meta line without any playback progress', () => {
     render(<BookItem {...props} book={{ ...book, progress: undefined }} mode='grid' />);
-    expect(screen.getByRole('status').textContent).toBe('Finished');
+    expect(screen.getByRole('status').textContent).toBe('Finished · 100%');
     expect(screen.queryByText('1h 0m')).toBeNull();
   });
   it('keeps episode counts on unfinished podcasts', () => {

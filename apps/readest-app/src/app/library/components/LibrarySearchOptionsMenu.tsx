@@ -113,7 +113,7 @@ const LibrarySearchOptionsMenu: React.FC<LibrarySearchOptionsMenuProps> = ({
                 className={clsx(
                   'rounded-md px-2 py-1 text-xs',
                   (config.nearbyWords ?? DEFAULT_NEARBY_WORDS) === value
-                    ? 'bg-base-300 font-bold'
+                    ? 'bg-base-300 font-medium tabular-nums'
                     : 'hover:bg-base-300',
                 )}
                 onClick={() => update('nearbyWords', value)}

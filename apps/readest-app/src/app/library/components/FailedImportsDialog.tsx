@@ -40,7 +40,7 @@ const FailedImportsDialog: React.FC<FailedImportsDialogProps> = ({ failedImports
           )}
         >
           <MdErrorOutline className='text-error h-5 w-5 shrink-0' aria-hidden='true' />
-          <p className='text-[0.85em] leading-snug'>{subtitle}</p>
+          <p className='text-[13px] leading-snug'>{subtitle}</p>
         </div>
 
         <ul
@@ -60,7 +60,7 @@ const FailedImportsDialog: React.FC<FailedImportsDialogProps> = ({ failedImports
                   {item.filename}
                 </span>
                 {!sharedError && item.errorMessage && (
-                  <span className='text-base-content/55 break-words text-[0.78em] leading-snug'>
+                  <span className='text-base-content/55 break-words text-[11px] leading-snug'>
                     {item.errorMessage}
                   </span>
                 )}

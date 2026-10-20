@@ -62,7 +62,7 @@ const WatchedFoldersPane: React.FC<WatchedFoldersPaneProps> = ({
           </button>
           <span className='text-base font-semibold tracking-tight'>{_('Watched Folders')}</span>
         </div>
-        <span className='text-base-content/65 text-[0.85em] leading-relaxed'>
+        <span className='text-base-content/65 text-[13px] leading-relaxed'>
           {_(
             'Readest re-scans these folders when it opens or returns to the foreground and imports any new books. Each folder keeps the structure it was imported with.',
           )}
@@ -70,7 +70,7 @@ const WatchedFoldersPane: React.FC<WatchedFoldersPaneProps> = ({
       </div>
 
       {folders.length === 0 ? (
-        <span className='text-base-content/65 py-4 text-center text-[0.85em]'>
+        <span className='text-base-content/65 py-4 text-center text-[13px]'>
           {_('No folders are watched.')}
         </span>
       ) : (
@@ -81,7 +81,7 @@ const WatchedFoldersPane: React.FC<WatchedFoldersPaneProps> = ({
                 <div className='truncate font-medium' title={folder.path}>
                   {getFilename(folder.path) || folder.path}
                 </div>
-                <div className='text-base-content/65 truncate text-[0.85em]'>{folder.path}</div>
+                <div className='text-base-content/65 truncate text-[13px]'>{folder.path}</div>
               </div>
               <SettingsSelect
                 value={folder.flatten ? 'flatten' : 'keep'}

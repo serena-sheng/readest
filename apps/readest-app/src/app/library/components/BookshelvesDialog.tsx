@@ -644,7 +644,7 @@ export function BookshelvesEditor({
         ? createPortal(
             <>
               <div className='pointer-events-none absolute inset-x-12 top-0 flex h-11 items-center justify-center sm:hidden'>
-                <span data-bookshelf-title className='line-clamp-1 text-center font-bold'>
+                <span data-bookshelf-title className='line-clamp-1 text-center font-medium'>
                   {tabName(selectedId)}
                 </span>
               </div>

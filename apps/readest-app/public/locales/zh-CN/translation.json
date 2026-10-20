@@ -931,6 +931,7 @@
   "Paragraph Mode": "段落模式",
   "Embedding Model": "嵌入模型",
   "{{count}} book(s) synced_other": "{{count}} 本书已同步",
+  "{{count}} books_other": "{{count}} 本",
   "Unable to start RSVP": "无法启动 RSVP",
   "RSVP not supported for PDF": "PDF 不支持 RSVP",
   "Select Chapter": "选择章节",

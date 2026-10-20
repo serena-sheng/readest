@@ -29,6 +29,7 @@ import {
   makeTranslationKey,
   setTranslation,
 } from '@/services/translators/translationCache';
+import type { TaskStatus } from '../components/TaskStatusBar';
 
 /**
  * Normalized paragraph text: the same value used for requests, cache keys and
@@ -347,6 +348,13 @@ export function useTextTranslation(
   // that finished (cached hits and failures included), so the hint can show
   // "translating 3/12" instead of an open-ended spinner.
   const progressRef = useRef({ total: 0, done: 0, ok: 0, lastSentAt: 0, timer: null as ReturnType<typeof setTimeout> | null });
+  // One status source for every kind of feedback. Success is not announced:
+  // the bar clears instead of flashing a completion message.
+  const [taskStatus, setTaskStatus] = useState<TaskStatus | null>(null);
+  // Paragraphs the provider rejected in the current run, kept so Retry can
+  // re-request exactly those instead of re-translating the whole page.
+  const failedElementsRef = useRef<HTMLElement[]>([]);
+  const progressStartedAtRef = useRef<number | null>(null);
   const pendingDOMUpdates = useRef<Array<() => void>>([]);
   const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -370,13 +378,17 @@ export function useTextTranslation(
 
   const hintInitialTranslating = () => {
     setIsLoading(bookKey, true);
-    eventDispatcher.dispatch('hint', {
-      bookKey,
-      message: _('Translating...'),
-    });
+    const startedAt = Date.now();
+    progressStartedAtRef.current = startedAt;
+    setTaskStatus({ kind: 'progress', message: _('Translating...'), startedAt });
     hintTimerRef.current = setTimeout(() => {
       hintTimerRef.current = null;
       setIsLoading(bookKey, false);
+      // Nothing was queued, so there is no progress to report and no failure.
+      if (progressRef.current.total === 0) {
+        progressStartedAtRef.current = null;
+        setTaskStatus(null);
+      }
     }, 2000);
   };
 
@@ -417,7 +429,9 @@ export function useTextTranslation(
     });
 
     translatedElements.current = [];
+    failedElementsRef.current = [];
     resetProgress();
+    setTaskStatus(null);
     if (viewSettings?.translationEnabled && view) {
       recreateTranslationObserver();
     }
@@ -633,31 +647,48 @@ export function useTextTranslation(
       clearTimeout(progress.timer);
       progress.timer = null;
     }
-    eventDispatcher.dispatch('hint', {
-      bookKey,
+    progressStartedAtRef.current ??= now;
+    setTaskStatus({
+      kind: 'progress',
       message: _('Translating {{done}}/{{total}}', {
         done: progress.done,
         total: progress.total,
       }),
-      timeout: 1400,
+      startedAt: progressStartedAtRef.current,
     });
   };
 
   const resetProgress = () => {
     progressRef.current = { total: 0, done: 0, ok: 0, lastSentAt: 0, timer: null };
+    progressStartedAtRef.current = null;
   };
 
   const finishProgress = () => {
     const progress = progressRef.current;
     if (progress.total === 0) return;
-    if (progress.ok > 0) {
-      eventDispatcher.dispatch('hint', {
-        bookKey,
-        message: _('Translation ready · {{count}} paragraphs', { count: progress.ok }),
-        timeout: 1200,
+    // Success and cache hits stay silent; only a failed run asks for action.
+    if (failedElementsRef.current.length > 0) {
+      setTaskStatus({
+        kind: 'error',
+        message: _('这 {{count}} 段没翻成', { count: failedElementsRef.current.length }),
       });
+    } else {
+      setTaskStatus(null);
     }
     resetProgress();
+  };
+
+  /**
+   * Re-request the paragraphs the provider rejected. A retry starts a fresh
+   * progress run so the bar reflects the new attempt rather than the old one.
+   */
+  const retryFailedTranslations = () => {
+    const failed = failedElementsRef.current.splice(0);
+    if (failed.length === 0) return;
+    setTaskStatus(null);
+    resetProgress();
+    progressStartedAtRef.current = Date.now();
+    failed.forEach((element) => scheduleTranslation(element));
   };
 
   const markProgressDone = (succeeded = false) => {
@@ -684,6 +715,7 @@ export function useTextTranslation(
       return;
     }
 
+    let succeeded = false;
     try {
       // Round-trip the paragraph's inline markup when the provider repositions
       // tags for us; otherwise send bare text. Markup is split at run
@@ -703,7 +735,7 @@ export function useTextTranslation(
         const cached = await getTranslation(cacheKey);
         if (cached !== null) {
           renderTranslation(el, cached);
-          markProgressDone(true);
+          succeeded = true;
           return;
         }
       }
@@ -735,11 +767,18 @@ export function useTextTranslation(
       // Falls back to the raw string when markup was not used or did not
       // survive sanitizing, which is exactly the previous behaviour.
       renderTranslation(el, translatedText, content);
-      markProgressDone(true);
+      succeeded = true;
     } catch (err) {
+      if (!failedElementsRef.current.includes(el)) {
+        failedElementsRef.current.push(el);
+      }
       console.warn('Translation failed:', err);
     } finally {
-      markProgressDone();
+      // A paragraph that succeeded later in the run is no longer a failure.
+      if (succeeded) {
+        failedElementsRef.current = failedElementsRef.current.filter((item) => item !== el);
+      }
+      markProgressDone(succeeded);
     }
   };
 
@@ -833,6 +872,10 @@ export function useTextTranslation(
       toggleTranslationVisibility(viewSettings.translationEnabled);
       if (enabled.current) {
         observeTextNodes();
+      } else {
+        failedElementsRef.current = [];
+        resetProgress();
+        setTaskStatus(null);
       }
     } else if (
       providerChanged ||
@@ -873,8 +916,13 @@ export function useTextTranslation(
         hintTimerRef.current = null;
       }
       pendingDOMUpdates.current = [];
+      failedElementsRef.current = [];
+      resetProgress();
+      setTaskStatus(null);
       setIsLoading(bookKey, false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
+
+  return { status: taskStatus, retry: retryFailedTranslations };
 }

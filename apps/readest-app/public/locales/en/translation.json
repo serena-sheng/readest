@@ -34,6 +34,8 @@
   "Set status for {{count}} book(s)_other": "Set status for {{count}} books",
   "{{count}} book(s) synced_one": "{{count}} book synced",
   "{{count}} book(s) synced_other": "{{count}} books synced",
+  "{{count}} books_one": "{{count}} book",
+  "{{count}} books_other": "{{count}} books",
   "{{count}} active_one": "{{count}} active",
   "{{count}} active_other": "{{count}} active",
   "{{count}} downloads_one": "{{count}} download",

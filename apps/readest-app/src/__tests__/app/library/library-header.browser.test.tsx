@@ -61,19 +61,21 @@ const renderHeader = () =>
 describe('library search actions', () => {
   for (const width of [768, 1200]) {
     for (const dir of ['ltr', 'rtl']) {
-      it(`centers Select Books between Import and the input end at ${width}px in ${dir}`, async () => {
+      it(`keeps Import and Select Books outside the input at ${width}px in ${dir}`, async () => {
         await page.viewport(width, 900);
         document.documentElement.dir = dir;
         const { getByRole } = renderHeader();
         const input = getByRole('textbox').getBoundingClientRect();
         const plus = getByRole('button', { name: 'Import Books' }).getBoundingClientRect();
         const select = getByRole('button', { name: 'Select Books' }).getBoundingClientRect();
-        const plusCenter = (plus.left + plus.right) / 2;
-        const selectCenter = (select.left + select.right) / 2;
-        expect(selectCenter).toBeCloseTo(
-          (plusCenter + (dir === 'ltr' ? input.right : input.left)) / 2,
-          0,
-        );
+        expect(input.width).toBeLessThanOrEqual(420);
+        if (dir === 'ltr') {
+          expect(plus.left).toBeGreaterThanOrEqual(input.right - 1);
+          expect(select.left).toBeGreaterThanOrEqual(plus.right - 1);
+        } else {
+          expect(plus.right).toBeLessThanOrEqual(input.left + 1);
+          expect(select.right).toBeLessThanOrEqual(plus.left + 1);
+        }
       });
     }
   }

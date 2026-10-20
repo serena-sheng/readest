@@ -88,7 +88,7 @@ const ResultCover = ({ book }: { book: Book }) => (
     aria-hidden='true'
     className='bg-base-200 eink-bordered relative flex h-10 w-7 shrink-0 items-center justify-center overflow-hidden rounded-sm'
   >
-    <span className='text-base-content/50 text-[10px] font-semibold'>
+    <span className='text-base-content/50 text-[11px] font-medium'>
       {(book.title ?? '').trim().charAt(0)}
     </span>
     {book.coverImageUrl && (
@@ -120,7 +120,7 @@ const ResultGroupMatches = memo(
       {sections.map((section, sectionIndex) => (
         <div key={`${section.index}-${sectionIndex}`}>
           {section.label && (
-            <h3 className='text-base-content/45 truncate px-4 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wider'>
+            <h3 className='text-base-content/45 truncate px-4 pb-1 pt-2.5 text-[11px] font-medium'>
               {section.label}
             </h3>
           )}

@@ -105,7 +105,7 @@ const TaggingModal: React.FC<TaggingModalProps> = ({
           'max-h-[85%] w-[95%] min-w-64 max-w-[440px] p-6 sm:w-[70%]',
         )}
       >
-        <h2 className='text-center text-lg font-bold'>{_('Tag Books')}</h2>
+        <h2 className='text-center text-lg font-medium'>{_('Tag Books')}</h2>
 
         {/* Action buttons */}
         <div className={clsx('mt-4 grid grid-cols-1 gap-2 text-base md:grid-cols-2')}>

@@ -1782,12 +1782,21 @@ html[data-theme^='emm'] .notch-masked::before {
  * the reading page keep their chrome.
  */
 
-/* Breathing room. The utility classes on the row (`gap-x-4 sm:gap-x-0 px-4
-   sm:px-2`) encode the old card layout, where each tile carried its own
-   padding; an unlayered rule here outranks them. row-gap is declared for the
-   contract even though Virtuoso emits one shelf row per grid line. */
+/* The page title shares the shelf's serif voice and its 19/26 title step. */
+html[data-theme^='emm'] .library-title {
+  font-family: 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', serif;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 26px;
+  letter-spacing: 0;
+}
+
+/* Breathing room. The utility classes on the row encode the same 24px gutter
+   and 24px edge as the library header, so the first cover lines up with the
+   search field. An unlayered rule here outranks them. row-gap is declared for
+   the contract even though Virtuoso emits one shelf row per grid line. */
 html[data-theme^='emm'] .bookshelf-items[data-shelf-layout='grid'] {
-  column-gap: 26px;
+  column-gap: 24px;
   row-gap: 34px;
   padding-inline: 24px;
   /* Virtuoso measures the row including padding, so the 17px top and bottom
@@ -1854,20 +1863,19 @@ html[data-theme^='emm'] .book-item.library-grid-item > div:last-child h4 {
   font-family: 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', serif;
   font-size: 13px;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 19px;
+  letter-spacing: 0;
   color: color-mix(in srgb, var(--color-base-content) 82%, transparent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Meta line (progress / time left / episode count). StatusBadge also carries
-   role="status" but paints its own pastel pill, so it is excluded. */
-html[data-theme^='emm'] .book-item.library-grid-item
-  [role='status']:not(.status-badge-finished):not(.status-badge-unread):not(
-    .status-badge-abandoned
-  ) {
-  font-size: 11px;
+/* Meta line (state + progress / time left / episode count). */
+html[data-theme^='emm'] .book-item.library-grid-item [role='status'] {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
   color: color-mix(in srgb, var(--color-base-content) 55%, transparent);
   font-variant-numeric: tabular-nums;
 }
@@ -1920,8 +1928,8 @@ html[data-theme^='emm'] .group-item h4 {
   font-family: 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti TC', serif;
   font-size: 13px;
   font-weight: 500;
-  line-height: 1.45;
-  letter-spacing: 0.01em;
+  line-height: 19px;
+  letter-spacing: 0;
   color: color-mix(in srgb, var(--color-base-content) 82%, transparent);
 }
 
@@ -1961,7 +1969,8 @@ html[data-theme^='emm'] [class*='bookshelf-items'] h4 {
   font-family: 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', serif !important;
   font-size: 13px;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 19px;
+  letter-spacing: 0;
   color: color-mix(in srgb, var(--color-base-content) 82%, transparent);
 }
 

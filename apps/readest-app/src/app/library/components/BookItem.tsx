@@ -176,7 +176,7 @@ const BookItem: React.FC<BookItemProps> = ({
           </div>
         )}
         {seriesIndex !== undefined && (
-          <span className='eink-bordered bg-base-100/90 text-base-content absolute end-1 top-1 rounded-sm px-1 text-[10px] font-semibold leading-4 shadow-sm'>
+          <span className='eink-bordered bg-base-100/90 text-base-content absolute end-1 top-1 rounded-sm px-1 text-[11px] font-medium leading-4 tabular-nums shadow-sm'>
             #{seriesIndex}
           </span>
         )}
@@ -204,8 +204,8 @@ const BookItem: React.FC<BookItemProps> = ({
           <h4
             title={book.title}
             className={clsx(
-              'overflow-hidden text-ellipsis font-semibold',
-              mode === 'grid' && 'block whitespace-nowrap text-xs',
+              'overflow-hidden text-ellipsis font-medium',
+              mode === 'grid' && 'block whitespace-nowrap text-[13px] leading-[19px]',
               mode === 'list' && 'line-clamp-1 text-base',
             )}
           >
@@ -231,13 +231,13 @@ const BookItem: React.FC<BookItemProps> = ({
             book.progress || book.readingStatus || isAbsBook ? 'justify-between' : 'justify-end',
           )}
           style={{
-            height: `${iconSize15}px`,
-            minHeight: `${iconSize15}px`,
+            height: `${Math.max(iconSize15, 18)}px`,
+            minHeight: `${Math.max(iconSize15, 18)}px`,
           }}
         >
           {isAbsBook && book.readingStatus !== 'finished' ? (
             <div
-              className='text-neutral-content/70 flex min-w-0 justify-between text-xs'
+              className='text-base-content/55 flex min-w-0 justify-between text-[13px] leading-[18px] font-normal tabular-nums'
               role='status'
             >
               <span className='truncate tabular-nums'>
@@ -268,7 +268,7 @@ const BookItem: React.FC<BookItemProps> = ({
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className='eink-bordered text-neutral-content/70 border-base-content/15 inline-flex h-3.5 shrink-0 items-center whitespace-nowrap rounded-sm border px-1 text-[10px] leading-none'
+                  className='eink-bordered text-neutral-content/70 border-base-content/15 inline-flex h-3.5 shrink-0 items-center whitespace-nowrap rounded-sm border px-1 text-[11px] leading-none'
                 >
                   {tag}
                 </span>

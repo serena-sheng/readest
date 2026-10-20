@@ -925,12 +925,15 @@ const Bookshelf: React.FC<BookshelfProps> = ({
           aria-label={_('Import Books')}
           aria-haspopup='menu'
           className={clsx(
-            'bookitem-main eink-bordered bg-base-100/50 hover:bg-base-300/50 flex aspect-28/41 w-full items-center justify-center rounded-sm',
+            'bookitem-main eink-bordered bg-base-100/50 hover:bg-base-300/50 flex aspect-28/41 w-full flex-col items-center justify-center gap-2 rounded-sm',
             'focus-visible:ring-base-content/15 focus-visible:outline-hidden focus-visible:ring-2',
           )}
           onClick={(event) => handleImportBooks(event.currentTarget)}
         >
-          <PiPlus aria-hidden className='text-base-content/60 size-10' />
+          <PiPlus aria-hidden className='text-base-content/60 size-8' />
+          <span className='text-base-content/55 text-[12px] leading-4 font-normal'>
+            {_('Import Books')}
+          </span>
         </button>
       </div>
     ) : undefined;

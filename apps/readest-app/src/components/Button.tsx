@@ -7,10 +7,22 @@ interface ButtonProps {
   onClick: () => void;
   disabled?: boolean;
   label?: string;
+  /** Tooltip text when it should differ from the accessible name. */
+  title?: string;
+  /** Set false for a button that is still actionable but visually secondary. */
+  ariaDisabled?: boolean;
   className?: string;
 }
 
-const Button: React.FC<ButtonProps> = ({ icon, onClick, disabled = false, label, className }) => {
+const Button: React.FC<ButtonProps> = ({
+  icon,
+  onClick,
+  disabled = false,
+  label,
+  title,
+  ariaDisabled,
+  className,
+}) => {
   const { appService } = useEnv();
   return (
     <button
@@ -23,8 +35,9 @@ const Button: React.FC<ButtonProps> = ({ icon, onClick, disabled = false, label,
         disabled && 'cursor-default bg-transparent! opacity-50',
         className,
       )}
-      title={label}
+      title={title ?? label}
       aria-label={label}
+      aria-disabled={ariaDisabled}
       onClick={disabled ? undefined : onClick}
     >
       {icon}
