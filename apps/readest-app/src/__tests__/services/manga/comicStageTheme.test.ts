@@ -8,29 +8,37 @@ import {
 } from '@/services/manga/comicStageTheme';
 
 describe('getComicStageTheme', () => {
-  it('returns the theme page color and 24px gutter for a light theme', () => {
-    expect(getComicStageTheme({ isDarkMode: false, pageBackground: '#FDF7FA' })).toEqual({
-      background: '#FDF7FA',
+  it('mixes the theme page color 94% with black for the stage', () => {
+    expect(getComicStageTheme({ pageBackground: '#FDF7FA' })).toEqual({
+      background: 'color-mix(in srgb, #FDF7FA 94%, #000)',
       padding: COMIC_STAGE_PADDING,
     });
     expect(COMIC_STAGE_PADDING).toBe(24);
   });
 
-  it('paints the theme page color in a dark theme too', () => {
-    expect(getComicStageTheme({ isDarkMode: true, pageBackground: '#342E25' })).toEqual({
-      background: '#342E25',
+  it('darkens the page color in a dark theme too', () => {
+    expect(getComicStageTheme({ pageBackground: '#342E25' })).toEqual({
+      background: 'color-mix(in srgb, #342E25 94%, #000)',
       padding: 24,
     });
   });
 
+  it('keeps the card color on e-ink so the stage adds no extra gray', () => {
+    expect(getComicStageTheme({ pageBackground: '#FDF7FA', isEink: true })).toEqual({
+      background: '#FDF7FA',
+      padding: COMIC_STAGE_PADDING,
+    });
+  });
+
   it('returns null when the theme exposes no page color', () => {
-    expect(getComicStageTheme({ isDarkMode: false, pageBackground: '   ' })).toBeNull();
-    expect(getComicStageTheme({ isDarkMode: false, pageBackground: null })).toBeNull();
+    expect(getComicStageTheme({ pageBackground: '   ' })).toBeNull();
+    expect(getComicStageTheme({ pageBackground: null })).toBeNull();
   });
 });
 
 describe('applyComicStageTheme', () => {
-  const makeDoc = () => new DOMParser().parseFromString('<html><head></head><body></body></html>', 'text/html');
+  const makeDoc = () =>
+    new DOMParser().parseFromString('<html><head></head><body></body></html>', 'text/html');
 
   it('paints the stage and restores the document in its cleanup', () => {
     const doc = makeDoc();

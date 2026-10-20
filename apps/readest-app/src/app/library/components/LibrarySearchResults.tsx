@@ -416,10 +416,10 @@ const LibrarySearchResults = ({
             return (
               <section key={group.book.hash}>
                 {/* The sticky element is a square strip painted with the page
-                    backdrop (bg-base-200, bg-base-100 in eink, matching the
-                    library page), so content scrolling beneath cannot show
-                    through the rounded corner notches of the card frame inside. */}
-                <header className='eink:bg-base-100 bg-base-200 sticky top-0 z-[1]'>
+                    backdrop (bg-base-200, the same canvas the library page
+                    uses), so content scrolling beneath cannot show through the
+                    rounded corner notches of the card frame inside. */}
+                <header className='bg-base-200 sticky top-0 z-[1]'>
                   <div
                     className={clsx(
                       'border-base-200 eink:border-base-content bg-base-100 rounded-t-xl border',

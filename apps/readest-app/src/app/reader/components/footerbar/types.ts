@@ -25,6 +25,8 @@ export interface FooterBarChildProps {
   navigationHandlers: NavigationHandlers;
   progressFraction: number;
   progressValid: boolean;
+  /** 1-based page position and page count, when the book has a valid one. */
+  pageNumber?: { current: number; total: number } | null;
   gridInsets: Insets;
   actionTab: string;
   forceMobileLayout: boolean;

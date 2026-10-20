@@ -435,12 +435,14 @@ const FoliateViewer: React.FC<{
         const pageSettings = getPageViewSettings(viewSettings);
         applyFixedlayoutStyles(detail.doc, pageSettings, undefined, bookData.book?.format);
         if (isComicFormat(bookData.book?.format)) {
-          // Comics get the theme's page color as their stage (light themes
-          // only); dark themes keep the existing stage. The style lives in the
-          // page document, so it goes away with the iframe.
+          // Comics get a stage derived from the theme's page color. The style
+          // lives in the page document, so it goes away with the iframe.
           applyComicStageTheme(
             detail.doc,
-            getComicStageTheme({ isDarkMode, pageBackground: getThemeCode().bg }),
+            getComicStageTheme({
+              pageBackground: getThemeCode().bg,
+              isEink: viewSettings.isEink,
+            }),
           );
         }
         if (bookData.book?.format === 'PDF' && renderer) {
@@ -1087,7 +1089,7 @@ const FoliateViewer: React.FC<{
             comicCleanups.push(
               applyComicStageTheme(
                 doc,
-                getComicStageTheme({ isDarkMode, pageBackground: themeCode?.bg }),
+                getComicStageTheme({ pageBackground: themeCode?.bg, isEink: viewSettings.isEink }),
               ),
             );
           }

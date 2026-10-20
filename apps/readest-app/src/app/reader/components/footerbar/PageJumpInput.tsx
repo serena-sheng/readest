@@ -11,6 +11,8 @@ interface PageJumpInputProps {
   bookKey: string;
   /** Always show '{current} / {total}' regardless of the progress style. */
   showFraction?: boolean;
+  /** Always show the progress percentage regardless of the progress style. */
+  showPercentage?: boolean;
   className?: string;
 }
 
@@ -21,7 +23,12 @@ interface PageJumpInputProps {
  * sizer span reserves the label's width so toggling edit mode never shifts
  * the surrounding layout.
  */
-const PageJumpInput: React.FC<PageJumpInputProps> = ({ bookKey, showFraction, className }) => {
+const PageJumpInput: React.FC<PageJumpInputProps> = ({
+  bookKey,
+  showFraction,
+  showPercentage,
+  className,
+}) => {
   const _ = useTranslation();
   const { hoveredBookKey, getView, getProgress, getViewSettings } = useReaderStore();
   const { getBookData } = useBookDataStore();
@@ -81,8 +88,11 @@ const PageJumpInput: React.FC<PageJumpInputProps> = ({ bookKey, showFraction, cl
           referencePageCount: viewSettings?.referencePageCount,
         })
       : null;
-  const template =
-    showFraction || progressStyle === 'fraction' ? '{current} / {total}' : '{percent}%';
+  const template = showPercentage
+    ? '{percent}%'
+    : showFraction || progressStyle === 'fraction'
+      ? '{current} / {total}'
+      : '{percent}%';
   const displayText = referenceInfo
     ? `${referenceInfo.current} / ${referenceInfo.total}`
     : formatProgress(pageInfo.current, pageInfo.total, template, false, 'en', 0);

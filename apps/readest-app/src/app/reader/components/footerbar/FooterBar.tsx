@@ -207,6 +207,10 @@ const FooterBar: React.FC<FooterBarProps> = ({
     actionTab,
     progressValid,
     progressFraction,
+    pageNumber:
+      progressValid && progressInfo
+        ? { current: progressInfo.current + 1, total: progressInfo.total }
+        : null,
     navigationHandlers,
     forceMobileLayout,
     onSetActionTab: handleSetActionTab,

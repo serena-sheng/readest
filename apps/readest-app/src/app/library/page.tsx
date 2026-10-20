@@ -332,7 +332,6 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   const isInitiating = useRef(false);
 
   const iconSize = useResponsiveSize(18);
-  const viewSettings = settings.globalViewSettings;
   const demoBooks = useDemoBooks();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const handleScrollerRef = useCallback((el: HTMLDivElement | null) => {
@@ -1973,8 +1972,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
       ref={pageRef}
       aria-label={_('Your Library')}
       className={clsx(
-        'library-page text-base-content full-height flex select-none flex-col overflow-hidden',
-        viewSettings?.isEink ? 'bg-base-100' : 'bg-base-200',
+        'library-page text-base-content bg-base-200 full-height flex select-none flex-col overflow-hidden',
         appService?.hasRoundedWindow && isRoundedWindow && 'window-border rounded-window',
       )}
     >
@@ -2275,10 +2273,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
         onClose={() => setShowImportNovel(false)}
         onImport={handleImportNovelFile}
       />
-      <TagBrowserPanel
-        open={isTagBrowserOpen}
-        onClose={() => setIsTagBrowserOpen(false)}
-      />
+      <TagBrowserPanel open={isTagBrowserOpen} onClose={() => setIsTagBrowserOpen(false)} />
       <ClipSignInAlert />
       <Toast />
     </div>
