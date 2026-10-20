@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 
-import { useTextTranslation } from '@/app/reader/hooks/useTextTranslation';
+import { useTextTranslation, describeTranslationFailure } from '@/app/reader/hooks/useTextTranslation';
 import { eventDispatcher } from '@/utils/event';
 import { resetTranslationCacheForTests } from '@/services/translators/translationCache';
 
@@ -102,7 +102,11 @@ describe('useTextTranslation task status', () => {
     await waitFor(() => {
       expect(result.current.status?.kind).toBe('error');
     });
-    expect(result.current.status).toEqual({ kind: 'error', message: '这 1 段没翻成' });
+    expect(result.current.status).toEqual({
+      kind: 'error',
+      message: 'service unavailable',
+      detail: '1 段未完成',
+    });
   });
 
   test('counts only the paragraphs that failed', async () => {
@@ -117,7 +121,11 @@ describe('useTextTranslation task status', () => {
     await waitFor(() => {
       expect(result.current.status?.kind).toBe('error');
     });
-    expect(result.current.status).toEqual({ kind: 'error', message: '这 1 段没翻成' });
+    expect(result.current.status).toEqual({
+      kind: 'error',
+      message: 'HTTP 500',
+      detail: '1 段未完成',
+    });
     await waitFor(() => {
       expect(view.querySelector('.translation-target')?.textContent).toBe(
         'Translated: Good paragraph',
@@ -173,5 +181,61 @@ describe('useTextTranslation task status', () => {
     });
 
     expect(dispatch.mock.calls.some(([event]) => event === 'hint')).toBe(false);
+  });
+});
+
+describe('translation failure reasons', () => {
+  const baseUrl = 'http://127.0.0.1:8790';
+
+  test('names a rejected API key instead of the HTTP status', () => {
+    expect(describeTranslationFailure(new Error('emm: HTTP 401'), baseUrl)).toEqual({
+      key: 'API Key 被拒',
+    });
+    expect(describeTranslationFailure(new Error('emm: HTTP 403'), baseUrl)).toEqual({
+      key: 'API Key 被拒',
+    });
+  });
+
+  test('names rate limiting', () => {
+    expect(describeTranslationFailure(new Error('emm: HTTP 429'), baseUrl)).toEqual({
+      key: '请求太频繁',
+    });
+  });
+
+  test('names a timeout', () => {
+    expect(
+      describeTranslationFailure(new Error('Translation request timed out'), baseUrl),
+    ).toEqual({ key: '请求超时' });
+    expect(describeTranslationFailure(new Error('AbortError'), baseUrl)).toEqual({
+      key: '请求超时',
+    });
+  });
+
+  test('names the service it cannot reach and keeps its address', () => {
+    expect(
+      describeTranslationFailure(new Error(`emm: 翻译端点不可用（${baseUrl}）`), baseUrl),
+    ).toEqual({ key: '连不上 {{baseUrl}}', values: { baseUrl } });
+  });
+
+  test('falls back to the provider text without its emm prefix', () => {
+    expect(describeTranslationFailure(new Error('emm: 模型响应为空'), baseUrl)).toEqual({
+      key: '模型响应为空',
+    });
+  });
+
+  test('shows the reason as the message and the count as the detail', async () => {
+    const view = createView(['Rejected paragraph']);
+    mocks.translate.mockRejectedValue(new Error('emm: HTTP 401'));
+
+    const { result } = renderHook(() => useTextTranslation(BOOK_KEY, view));
+
+    await waitFor(() => {
+      expect(result.current.status?.kind).toBe('error');
+    });
+    expect(result.current.status).toEqual({
+      kind: 'error',
+      message: 'API Key 被拒',
+      detail: '1 段未完成',
+    });
   });
 });

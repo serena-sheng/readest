@@ -439,7 +439,7 @@ const TTSPlayerSheet = ({
           <MdArrowBackIosNew size={iconSize24 * 0.8} className='rtl:rotate-180' />
         </button>
         <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
-          <span className='line-clamp-1 text-center font-bold'>
+          <span className='line-clamp-1 text-center font-medium'>
             {view === 'speed'
               ? _('Speed')
               : view === 'voice'

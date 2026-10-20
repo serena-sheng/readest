@@ -54,7 +54,7 @@ const SpeedSettingsIcon = ({ size, label }: { size: number; label: string }) => 
       <path d='M19.33 9.46 L20.8 12 L16.4 19.62 L7.6 19.62 L3.2 12 L7.6 4.38 L12 4.38' />
       <circle cx='12' cy='12' r='3.2' />
     </svg>
-    <span className='absolute start-[56%] top-[5%] text-[9px] font-semibold leading-none tabular-nums'>
+    <span className='absolute start-[56%] top-[5%] text-caption font-semibold leading-none tabular-nums'>
       {label}
     </span>
   </span>

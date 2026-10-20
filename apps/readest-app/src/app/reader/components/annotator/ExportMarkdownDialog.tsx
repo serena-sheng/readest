@@ -506,7 +506,7 @@ const ExportMarkdownDialog: React.FC<ExportMarkdownDialogProps> = ({
       <div className='flex flex-col gap-4'>
         {/* Export Format */}
         <div className='flex items-center justify-between gap-3'>
-          <h3 className='font-bold'>{_('Format')}</h3>
+          <h3 className='font-medium'>{_('Format')}</h3>
           <select
             value={exportConfig.exportFormat}
             onChange={(e) =>
@@ -532,7 +532,7 @@ const ExportMarkdownDialog: React.FC<ExportMarkdownDialogProps> = ({
         {/* Format Options */}
         {!isJson && (
           <div className='space-y-3'>
-            <h3 className='font-bold'>{_('Format Options')}</h3>
+            <h3 className='font-medium'>{_('Format Options')}</h3>
 
             <div
               className={clsx(
@@ -684,7 +684,7 @@ const ExportMarkdownDialog: React.FC<ExportMarkdownDialogProps> = ({
         {/* Filter by color / style */}
         {(applyColorFilter || applyStyleFilter) && (
           <div className='space-y-3'>
-            <h3 className='font-bold'>{_('Filter Annotations')}</h3>
+            <h3 className='font-medium'>{_('Filter Annotations')}</h3>
 
             {applyColorFilter && (
               <div className='space-y-2'>
@@ -742,7 +742,7 @@ const ExportMarkdownDialog: React.FC<ExportMarkdownDialogProps> = ({
         {!isJson && (
           <div className='space-y-3'>
             <div className='flex items-center justify-between'>
-              <h3 className='font-bold'>{_('Advanced')}</h3>
+              <h3 className='font-medium'>{_('Advanced')}</h3>
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
                 className='text-sm text-blue-500 hover:underline'
@@ -790,7 +790,7 @@ const ExportMarkdownDialog: React.FC<ExportMarkdownDialogProps> = ({
 
                     <div className='bg-base-200 space-y-3 rounded-lg p-3 text-xs'>
                       <div>
-                        <p className='mb-2 font-bold'>{_('Template Syntax:')}</p>
+                        <p className='mb-2 font-medium'>{_('Template Syntax:')}</p>
                         <ul className='space-y-1 font-mono'>
                           <li>
                             <code className='bg-base-300 rounded-sm px-1'>{'{{ variable }}'}</code>{' '}
@@ -823,7 +823,7 @@ const ExportMarkdownDialog: React.FC<ExportMarkdownDialogProps> = ({
                         </ul>
                       </div>
                       <div>
-                        <p className='mb-2 font-bold'>{_('Available Variables:')}</p>
+                        <p className='mb-2 font-medium'>{_('Available Variables:')}</p>
                         <ul className='space-y-1'>
                           <li>
                             <code className='bg-base-300 rounded-sm px-1'>title</code> -{' '}
@@ -898,7 +898,7 @@ const ExportMarkdownDialog: React.FC<ExportMarkdownDialogProps> = ({
                         </ul>
                       </div>
                       <div>
-                        <p className='mb-2 font-bold'>{_('Available Formatters:')}</p>
+                        <p className='mb-2 font-medium'>{_('Available Formatters:')}</p>
                         <ul className='space-y-1 font-mono'>
                           <li>
                             <code className='bg-base-300 rounded-sm px-1'>date</code> /{' '}
@@ -956,7 +956,7 @@ const ExportMarkdownDialog: React.FC<ExportMarkdownDialogProps> = ({
                         </ul>
                       </div>
                       <div>
-                        <p className='mb-2 font-bold'>{_('Date Format Tokens:')}</p>
+                        <p className='mb-2 font-medium'>{_('Date Format Tokens:')}</p>
                         <ul className='space-y-1 font-mono'>
                           <li>
                             <code className='bg-base-300 rounded-sm px-1'>%Y</code> -{' '}
@@ -995,7 +995,7 @@ const ExportMarkdownDialog: React.FC<ExportMarkdownDialogProps> = ({
         {/* Preview */}
         <div className='space-y-2'>
           <div className='flex items-center justify-between'>
-            <h3 className='font-bold'>{_('Preview')}</h3>
+            <h3 className='font-medium'>{_('Preview')}</h3>
             {!isJson && (
               <label className='flex cursor-pointer items-center gap-2'>
                 <input

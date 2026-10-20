@@ -4,36 +4,27 @@ import { RiQuillPenLine } from 'react-icons/ri';
 
 import { useTranslation } from '@/hooks/useTranslation';
 import MenuItem from '@/components/MenuItem';
-import {
-  useAskLocalPanel,
-  useIdeasPanel,
-  useNotebookToggle,
-  useTranslationExpertPanel,
-  useTypesetPanel,
-} from '../hooks/useReaderTools';
+import { useNotebookToggle, useReaderToolsPanels } from '../hooks/useReaderTools';
 
 interface ReaderToolsMenuItemsProps {
   bookKey: string;
-  title: string;
   setIsDropdownOpen?: (isOpen: boolean) => void;
 }
 
 /**
  * The reader tools that used to crowd the right side of the header. They now
- * live as rows in the `…` menu — icon, label and a one-line description — with
- * their panels still owned by the same hooks the old icon buttons used, so
- * nothing was reduced to a dead entry.
+ * live as rows in the `…` menu — icon, label and a one-line description.
+ *
+ * The rows only call the toggles from the header's `ReaderToolsProvider`: the
+ * dropdown unmounts this subtree when it closes, so a panel rendered here
+ * would disappear the moment the row that opened it closed the menu.
  */
 const ReaderToolsMenuItems: React.FC<ReaderToolsMenuItemsProps> = ({
   bookKey,
-  title,
   setIsDropdownOpen,
 }) => {
   const _ = useTranslation();
-  const translationExpert = useTranslationExpertPanel({ bookKey, title });
-  const askLocal = useAskLocalPanel({ bookKey, title });
-  const typeset = useTypesetPanel({ bookKey, title });
-  const ideas = useIdeasPanel({ bookKey, title });
+  const tools = useReaderToolsPanels();
   const notebook = useNotebookToggle(bookKey);
 
   return (
@@ -43,7 +34,7 @@ const ReaderToolsMenuItems: React.FC<ReaderToolsMenuItemsProps> = ({
         ariaLabel='译文设置'
         description='选择译员与译文样式'
         Icon={MdTranslate}
-        onClick={translationExpert.toggle}
+        onClick={tools.translationExpert.toggle}
         transient
         setIsDropdownOpen={setIsDropdownOpen}
       />
@@ -52,7 +43,7 @@ const ReaderToolsMenuItems: React.FC<ReaderToolsMenuItemsProps> = ({
         ariaLabel={_('问书')}
         description='就当前内容向 AI 提问'
         Icon={MdOutlineQuestionAnswer}
-        onClick={askLocal.toggle}
+        onClick={tools.askLocal.toggle}
         transient
         setIsDropdownOpen={setIsDropdownOpen}
       />
@@ -61,7 +52,7 @@ const ReaderToolsMenuItems: React.FC<ReaderToolsMenuItemsProps> = ({
         ariaLabel='排版'
         description='调整正文的字体与版式'
         Icon={MdTextFields}
-        onClick={typeset.toggle}
+        onClick={tools.typeset.toggle}
         transient
         setIsDropdownOpen={setIsDropdownOpen}
       />
@@ -70,7 +61,7 @@ const ReaderToolsMenuItems: React.FC<ReaderToolsMenuItemsProps> = ({
         ariaLabel='想法'
         description='记录并整理阅读中的灵感'
         Icon={MdOutlineLightbulb}
-        onClick={ideas.toggle}
+        onClick={tools.ideas.toggle}
         transient
         setIsDropdownOpen={setIsDropdownOpen}
       />
@@ -83,10 +74,6 @@ const ReaderToolsMenuItems: React.FC<ReaderToolsMenuItemsProps> = ({
         transient
         setIsDropdownOpen={setIsDropdownOpen}
       />
-      {translationExpert.panel}
-      {askLocal.panel}
-      {typeset.panel}
-      {ideas.panel}
     </>
   );
 };

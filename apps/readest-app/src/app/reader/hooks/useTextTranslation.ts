@@ -12,6 +12,7 @@ import { debounce } from '@/utils/debounce';
 import { getLocale } from '@/utils/misc';
 import { getDirFromLanguage } from '@/utils/rtl';
 import { getTranslators } from '@/services/translators';
+import { getActiveEndpoint } from '@/services/translators/endpoints';
 import {
   extractSourcePayload,
   sanitizeTranslatedMarkup,
@@ -36,6 +37,36 @@ import type { TaskStatus } from '../components/TaskStatusBar';
  * the screen-character budget, so all three agree on what a paragraph is.
  */
 const getParagraphText = (el: HTMLElement) => el.textContent?.replaceAll('\n', '').trim() ?? '';
+
+/** A provider failure reduced to the sentence the status bar can show. */
+export interface TranslationFailureReason {
+  key: string;
+  values?: Record<string, string>;
+}
+
+/**
+ * Turns a provider error into the one thing a reader can act on. Providers
+ * throw `emm: …` console jargon (an HTTP status, a URL, a raw `fetch` error);
+ * showing that is unreadable, and hiding it behind a count says nothing about
+ * what went wrong. The status bar shows this, with the paragraph count as a
+ * secondary line.
+ */
+export const describeTranslationFailure = (
+  error: unknown,
+  baseUrl: string,
+): TranslationFailureReason => {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (/HTTP\s*(401|403)/i.test(message)) return { key: 'API Key 被拒' };
+  if (/HTTP\s*429/i.test(message)) return { key: '请求太频繁' };
+  if (/(AbortError|TimeoutError|timeout|timed out|超时)/i.test(message)) {
+    return { key: '请求超时' };
+  }
+  if (/(NetworkError|Failed to fetch|fetch failed|翻译端点不可用)/i.test(message)) {
+    return { key: '连不上 {{baseUrl}}', values: { baseUrl } };
+  }
+  const detail = message.replace(/^emm:\s*/i, '').trim();
+  return { key: detail || '翻译失败' };
+};
 
 /**
  * Markup inflates the payload and the provider's length cap counts the tags,
@@ -354,6 +385,13 @@ export function useTextTranslation(
   // Paragraphs the provider rejected in the current run, kept so Retry can
   // re-request exactly those instead of re-translating the whole page.
   const failedElementsRef = useRef<HTMLElement[]>([]);
+  // The provider's last rejection, kept until the run ends so the bar can say
+  // why the paragraphs failed instead of only how many did.
+  const failureReasonRef = useRef<TranslationFailureReason | null>(null);
+  // Bumped whenever the current run is torn down (provider change, translation
+  // switched off, unmount). A failure that lands after that is a cancellation,
+  // not something the reader asked to know about.
+  const runIdRef = useRef(0);
   const progressStartedAtRef = useRef<number | null>(null);
   const pendingDOMUpdates = useRef<Array<() => void>>([]);
   const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -430,6 +468,8 @@ export function useTextTranslation(
 
     translatedElements.current = [];
     failedElementsRef.current = [];
+    failureReasonRef.current = null;
+    runIdRef.current += 1;
     resetProgress();
     setTaskStatus(null);
     if (viewSettings?.translationEnabled && view) {
@@ -668,10 +708,13 @@ export function useTextTranslation(
     if (progress.total === 0) return;
     // Success and cache hits stay silent; only a failed run asks for action.
     if (failedElementsRef.current.length > 0) {
+      const failure = failureReasonRef.current;
       setTaskStatus({
         kind: 'error',
-        message: _('这 {{count}} 段没翻成', { count: failedElementsRef.current.length }),
+        message: failure ? _(failure.key, failure.values) : _('翻译失败'),
+        detail: _('{{count}} 段未完成', { count: failedElementsRef.current.length }),
       });
+      failureReasonRef.current = null;
     } else {
       setTaskStatus(null);
     }
@@ -685,6 +728,7 @@ export function useTextTranslation(
   const retryFailedTranslations = () => {
     const failed = failedElementsRef.current.splice(0);
     if (failed.length === 0) return;
+    failureReasonRef.current = null;
     setTaskStatus(null);
     resetProgress();
     progressStartedAtRef.current = Date.now();
@@ -704,6 +748,9 @@ export function useTextTranslation(
 
   const translateElement = async (el: HTMLElement) => {
     if (!enabled.current) return;
+    // The run this request belongs to; a teardown while it is in flight turns
+    // its rejection into a cancellation rather than a failure.
+    const runId = runIdRef.current;
     const text = getParagraphText(el);
     if (!text) {
       markProgressDone();
@@ -769,9 +816,19 @@ export function useTextTranslation(
       renderTranslation(el, translatedText, content);
       succeeded = true;
     } catch (err) {
+      // A request torn down by the reader (translation switched off, provider
+      // changed, view unmounted) is not a failure: reporting it as a timeout
+      // would blame the service for the reader's own cancel.
+      if (
+        runId !== runIdRef.current ||
+        ((err as Error | undefined)?.name === 'AbortError' && !enabled.current)
+      ) {
+        return;
+      }
       if (!failedElementsRef.current.includes(el)) {
         failedElementsRef.current.push(el);
       }
+      failureReasonRef.current = describeTranslationFailure(err, getActiveEndpoint().baseUrl);
       console.warn('Translation failed:', err);
     } finally {
       // A paragraph that succeeded later in the run is no longer a failure.
@@ -874,6 +931,8 @@ export function useTextTranslation(
         observeTextNodes();
       } else {
         failedElementsRef.current = [];
+        failureReasonRef.current = null;
+        runIdRef.current += 1;
         resetProgress();
         setTaskStatus(null);
       }
@@ -917,6 +976,8 @@ export function useTextTranslation(
       }
       pendingDOMUpdates.current = [];
       failedElementsRef.current = [];
+      failureReasonRef.current = null;
+      runIdRef.current += 1;
       resetProgress();
       setTaskStatus(null);
       setIsLoading(bookKey, false);

@@ -509,7 +509,7 @@ export const DictionaryResultsHeader: React.FC<DictionaryResultsHeaderProps> = (
             <MdVolumeUp size={18} />
           </button>
         ) : null}
-        <span data-testid='dict-title' className='line-clamp-1 min-w-0 font-bold'>
+        <span data-testid='dict-title' className='line-clamp-1 min-w-0 font-medium'>
           {currentWord}
         </span>
       </div>
@@ -660,7 +660,7 @@ export const DictionaryResultsBody: React.FC<DictionaryResultsBodyProps> = ({
       <div className='flex-1 overflow-y-auto'>
         {noProvidersAtAll ? (
           <div className='flex h-full flex-col items-center justify-center px-6 text-center'>
-            <h1 className='text-base font-bold'>{_('No dictionaries enabled')}</h1>
+            <h1 className='text-base font-medium'>{_('No dictionaries enabled')}</h1>
             <p className='not-eink:opacity-70 mt-2 text-sm'>
               {_('Enable a dictionary in Settings → Language → Dictionaries.')}
             </p>

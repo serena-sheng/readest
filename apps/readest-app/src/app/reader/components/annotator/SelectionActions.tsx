@@ -232,7 +232,7 @@ const SelectionActions: React.FC<SelectionActionsProps> = ({
   };
 
   const buttonClass =
-    'h-7 rounded-[calc(var(--radius-field)-2px)] px-2.5 text-[12.5px] leading-none ' +
+    'h-7 rounded-[calc(var(--radius-field)-2px)] px-2.5 text-meta leading-none ' +
     'text-base-content/80 transition-colors duration-150 hover:bg-base-content/[0.06] ' +
     'hover:text-base-content active:bg-base-content/10 motion-reduce:transition-none';
 

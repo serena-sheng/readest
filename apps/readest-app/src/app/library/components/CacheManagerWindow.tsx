@@ -207,7 +207,7 @@ export const CacheManagerWindow = () => {
               {heroIcon}
             </div>
             <div className='flex flex-col items-center gap-1'>
-              <span className='text-base-content text-3xl font-bold tracking-tight tabular-nums'>
+              <span className='text-base-content text-3xl font-medium tracking-tight tabular-nums'>
                 {status === 'scanning' ? '—' : formatBytes(size)}
               </span>
               <span className='text-base-content/60 line-clamp-2 text-sm'>{heroCaption}</span>

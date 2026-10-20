@@ -526,7 +526,7 @@ const TypesetPanel: React.FC<TypesetPanelProps> = ({ bookKey, title, open, onClo
                           className='h-5 w-5 rounded-full border border-black/10'
                           style={{ backgroundColor: palette.primary }}
                         />
-                        <span className='w-full truncate text-[10px] font-medium'>
+                        <span className='w-full truncate text-caption font-medium'>
                           {theme.label}
                         </span>
                       </button>

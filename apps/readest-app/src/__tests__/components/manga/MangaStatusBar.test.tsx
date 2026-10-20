@@ -102,7 +102,7 @@ describe('MangaStatusBar', () => {
     const onDismiss = vi.fn();
     render(
       <MangaStatusBar
-        status={{ kind: 'error', message: '网络好像断了，检查后再试。' }}
+        status={{ kind: 'error', message: '连不上翻译服务（http://127.0.0.1:8790）' }}
         onRetry={onRetry}
         onDismiss={onDismiss}
       />,
@@ -112,7 +112,7 @@ describe('MangaStatusBar', () => {
       vi.advanceTimersByTime(60_000);
     });
     const alert = screen.getByRole('alert');
-    expect(alert.textContent).toContain('网络好像断了，检查后再试。');
+    expect(alert.textContent).toContain('连不上翻译服务（http://127.0.0.1:8790）');
 
     fireEvent.click(screen.getByRole('button', { name: '重试' }));
     fireEvent.click(screen.getByRole('button', { name: '关闭' }));

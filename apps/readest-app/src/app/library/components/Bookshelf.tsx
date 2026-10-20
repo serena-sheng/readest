@@ -931,9 +931,7 @@ const Bookshelf: React.FC<BookshelfProps> = ({
           onClick={(event) => handleImportBooks(event.currentTarget)}
         >
           <PiPlus aria-hidden className='text-base-content/60 size-8' />
-          <span className='text-base-content/55 text-[12px] leading-4 font-normal'>
-            {_('Import Books')}
-          </span>
+          <span className='text-base-content/55 text-caption font-normal'>{_('Import Books')}</span>
         </button>
       </div>
     ) : undefined;

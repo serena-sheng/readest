@@ -40,7 +40,7 @@ const RSVPStartDialog: React.FC<RSVPStartDialogProps> = ({ startChoice, onSelect
         aria-modal='true'
         aria-labelledby='rsvp-dialog-title'
       >
-        <h2 id='rsvp-dialog-title' className='mb-2 text-xl font-bold'>
+        <h2 id='rsvp-dialog-title' className='mb-2 text-xl font-medium'>
           {_('Start RSVP Reading')}
         </h2>
         <p className='mb-6 text-sm opacity-70'>{_('Choose where to start reading')}</p>

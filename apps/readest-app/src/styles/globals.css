@@ -22,6 +22,21 @@
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
+  /* Type scale. Five steps only: chrome text takes the smallest two, body
+     copy the middle, headings the fourth, and a single display size for the
+     few full-bleed numerals (RSVP). Line heights are part of each step so a
+     `text-body` never needs a hand-tuned `leading-*` beside it. */
+  --text-caption: 11px;
+  --text-caption--line-height: 16px;
+  --text-meta: 13px;
+  --text-meta--line-height: 19px;
+  --text-body: 15px;
+  --text-body--line-height: 26px;
+  --text-title: 19px;
+  --text-title--line-height: 26px;
+  --text-display: 44px;
+  --text-display--line-height: 48px;
+
   /* Tailwind 4 replaced the default palette with wider-gamut oklch values, so
      every `*-green-500`-style accent shifted (more vivid on P3 displays). Pin
      the Tailwind 3 values for the families the app actually uses so no page
@@ -215,6 +230,13 @@
   [role='button']:not(:disabled) {
     cursor: pointer;
   }
+
+  /* Native range controls (the footer's progress slider above all) paint their
+     filled track with the UA blue by default. The app's accent is primary, so
+     the bar matches the icons beside it instead of introducing a second blue. */
+  input[type='range'] {
+    accent-color: var(--color-primary);
+  }
 }
 
 @font-face {
@@ -259,6 +281,11 @@
     background-color: transparent;
 
     --scroll-bg-color: var(--color-base-200);
+    /* The reading column's width, shared by the reader header and footer so
+       their content rows line up with the page text instead of the viewport
+       edges. Kept narrower than the text measure at narrow widths by the 96px
+       gutter. */
+    --reader-measure: min(720px, 100vw - 96px);
     --safe-area-inset-top: env(safe-area-inset-top);
     --safe-area-inset-right: env(safe-area-inset-right);
     --safe-area-inset-bottom: env(safe-area-inset-bottom);
@@ -1684,22 +1711,10 @@ html[data-theme^='emm'] .header-bar .btn:hover {
   opacity: 1;
 }
 
-/* HeaderBar's centred line doubles as the quiet imprint when the page header
-   is turned off: 10.5px, wide tracking, 55% ink. */
-/* The running imprint (SectionInfo) already prints the chapter/title inside the
-   page, so the Bar's own centred line would sit under the toolbar buttons and
-   overlap them. Hide it for emm only. */
-html[data-theme^='emm'] .header-bar .header-title {
-  visibility: hidden;
-}
-
-html[data-theme^='emm'] .header-bar .header-title > div {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
-}
+/* The title itself is the HeaderBar's own line (`text-meta font-medium`); emm
+   used to hide it and re-render it as a 11px uppercase imprint, which left the
+   bar with no book name. Only the running page header (SectionInfo) keeps the
+   imprint below. */
 
 /* The real running page header. SectionInfo renders the current section label
    at the top of every page while `showHeader` is on (the default), so this is

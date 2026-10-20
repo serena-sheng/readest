@@ -32,6 +32,7 @@ import BookmarkToggler from './BookmarkToggler';
 import TranslationToggler from './TranslationToggler';
 import MangaTranslateToggler from './manga/MangaTranslateToggler';
 import ReaderMoreMenu from './ReaderMoreMenu';
+import { ReaderToolsProvider } from '../hooks/useReaderTools';
 import SyncInfoDialog from './SyncInfoDialog';
 
 interface HeaderBarProps {
@@ -170,7 +171,10 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   const windowButtonVisible =
     appService?.hasWindowBar && !isTrafficLightVisible && !trafficLightInHeader;
 
-  return (
+  // The four right-hand drawers are mounted by the provider rather than by the
+  // `…` menu: the menu unmounts on close, and a panel that unmounts with the
+  // row that opened it looks like a dead button.
+  const header = (
     <div
       className={clsx(
         // pointer-events-none: the wrapper is as tall as its safe-area
@@ -246,132 +250,139 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           }
         }}
       >
-        <div className='header-tools-start bg-base-100 sidebar-bookmark-toggler z-20 flex h-full min-w-0 items-center gap-x-1 pe-2 max-[350px]:gap-x-2'>
-          {/* h-full so this scroller spans the whole bar: `overflow-x-auto`
+        {/* The bar paints full-width, but its contents sit on the same column
+            as the page text (`--reader-measure`), so the toolbar, title and
+            footer line up instead of hugging the window edges. */}
+        <div className='mx-auto flex h-full w-[var(--reader-measure)] min-w-0 items-center'>
+          <div className='header-tools-start bg-base-100 sidebar-bookmark-toggler z-20 flex h-full min-w-0 items-center gap-x-1 pe-2 max-[350px]:gap-x-2'>
+            {/* h-full so this scroller spans the whole bar: `overflow-x-auto`
               also clips vertically, and shrink-wrapped to the 32px icons it
               cut the buttons' touch halos back down to 32px (#5401). */}
-          {/* no-scrollbar: the overlay scrollbar of `overflow-x-auto` owns a
+            {/* no-scrollbar: the overlay scrollbar of `overflow-x-auto` owns a
               hit-test strip at the scroller's bottom edge on Android, which
               cut the touch halos short of the 44px target (#5401) —
               `scrollbar-width: none` alone does not remove that strip.
               px-1.5 reserves the 6px each 44px halo extends past its 32px
               button, so the halos do not create a draggable scroll range. */}
-          <div className='no-scrollbar flex h-full min-w-0 items-center gap-x-1 overflow-x-auto px-1.5 max-[350px]:gap-x-2'>
-            {/* Tablet portrait runs the mobile footer bar, whose TOC tab opens
+            <div className='no-scrollbar flex h-full min-w-0 items-center gap-x-1 overflow-x-auto px-1.5 max-[350px]:gap-x-2'>
+              {/* Tablet portrait runs the mobile footer bar, whose TOC tab opens
                 this same sidebar — showing the toggle here too gave one action
                 two buttons (#5634). Phones are already covered by `sm:`. */}
-            {!isSideBarVisible && !forceMobileLayout && (
-              <div className='hidden sm:flex'>
-                <SidebarToggler bookKey={bookKey} />
-              </div>
-            )}
-            <button
-              title={_('Go to Library')}
-              className='btn btn-ghost hidden h-8 min-h-8 w-8 p-0 sm:flex'
-              onClick={onGoToLibrary}
-            >
-              <VscLibrary size={iconSize18} className='fill-base-content' />
-            </button>
-            <BookmarkToggler bookKey={bookKey} />
-            <TranslationToggler bookKey={bookKey} />
-            <MangaTranslateToggler bookKey={bookKey} view={view ?? null} />
-          </div>
-          {enableAnnotationQuickActions && (
-            <Dropdown
-              label={
-                annotationQuickAction
-                  ? _('Disable Quick Action')
-                  : _('Enable Quick Action on Selection')
-              }
-              className='exclude-title-bar-mousedown dropdown-bottom dropdown-center'
-              menuClassName='relative!'
-              buttonClassName={clsx(
-                'btn btn-ghost h-8 min-h-8 w-8 p-0',
-                viewSettings?.annotationQuickAction && 'bg-base-300/50',
+              {!isSideBarVisible && !forceMobileLayout && (
+                <div className='hidden sm:flex'>
+                  <SidebarToggler bookKey={bookKey} />
+                </div>
               )}
-              toggleButton={
-                annotationQuickAction === 'highlight' || annotationQuickAction === null ? (
-                  <HighlighterIcon
-                    size={iconSize18}
-                    tipColor={annotationQuickAction === null ? '#8F8F8F' : highlightHexColor}
-                    tipStyle={{
-                      opacity: annotationQuickAction === null ? 0.5 : 0.8,
-                      mixBlendMode: isDarkMode ? 'screen' : 'multiply',
-                    }}
-                  />
-                ) : (
-                  <AnnotationToolQuickActionIcon size={iconSize18} />
-                )
-              }
+              <button
+                title={_('Go to Library')}
+                className='btn btn-ghost hidden h-8 min-h-8 w-8 p-0 sm:flex'
+                onClick={onGoToLibrary}
+              >
+                <VscLibrary size={iconSize18} className='fill-base-content' />
+              </button>
+              <BookmarkToggler bookKey={bookKey} />
+              <TranslationToggler bookKey={bookKey} />
+              <MangaTranslateToggler bookKey={bookKey} view={view ?? null} />
+            </div>
+            {enableAnnotationQuickActions && (
+              <Dropdown
+                label={
+                  annotationQuickAction
+                    ? _('Disable Quick Action')
+                    : _('Enable Quick Action on Selection')
+                }
+                className='exclude-title-bar-mousedown dropdown-bottom dropdown-center'
+                menuClassName='relative!'
+                buttonClassName={clsx(
+                  'btn btn-ghost h-8 min-h-8 w-8 p-0',
+                  viewSettings?.annotationQuickAction && 'bg-base-300/50',
+                )}
+                toggleButton={
+                  annotationQuickAction === 'highlight' || annotationQuickAction === null ? (
+                    <HighlighterIcon
+                      size={iconSize18}
+                      tipColor={annotationQuickAction === null ? '#8F8F8F' : highlightHexColor}
+                      tipStyle={{
+                        opacity: annotationQuickAction === null ? 0.5 : 0.8,
+                        mixBlendMode: isDarkMode ? 'screen' : 'multiply',
+                      }}
+                    />
+                  ) : (
+                    <AnnotationToolQuickActionIcon size={iconSize18} />
+                  )
+                }
+                onToggle={handleToggleDropdown}
+              >
+                <QuickActionMenu
+                  bookKey={bookKey}
+                  selectedAction={viewSettings.annotationQuickAction}
+                  onActionSelect={handleAnnotationQuickActionSelect}
+                />
+              </Dropdown>
+            )}
+          </div>
+
+          <div
+            role='contentinfo'
+            aria-label={_('Title') + ' - ' + bookTitle}
+            className={clsx(
+              'header-title z-15 bg-base-100 pointer-events-none hidden min-w-0 flex-1 items-center justify-start sm:flex',
+              isHeaderCompact && 'hidden!',
+            )}
+            {...getBookDataAttributes(bookTitle, bookData?.book?.metadata)}
+          >
+            <div aria-hidden='true' className='line-clamp-1 text-left text-[13px] font-medium'>
+              {bookTitle}
+            </div>
+          </div>
+
+          <div className='header-tools-end bg-base-100 z-20 ms-auto flex h-full min-w-max items-center gap-x-1 ps-2 max-[350px]:gap-x-2'>
+            <Dropdown
+              label={_('View Options')}
+              containerClassName='h-8'
+              className='exclude-title-bar-mousedown dropdown-bottom dropdown-end'
+              buttonClassName='btn btn-ghost h-8 min-h-8 w-8 p-0 mt-0'
+              toggleButton={<MdOutlineMenu />}
               onToggle={handleToggleDropdown}
             >
-              <QuickActionMenu
+              <ReaderMoreMenu
                 bookKey={bookKey}
-                selectedAction={viewSettings.annotationQuickAction}
-                onActionSelect={handleAnnotationQuickActionSelect}
+                onShowMetaHashDialog={() => setIsMetaHashDialogOpen(true)}
               />
             </Dropdown>
-          )}
-        </div>
-
-        <div
-          role='contentinfo'
-          aria-label={_('Title') + ' - ' + bookTitle}
-          className={clsx(
-            'header-title z-15 bg-base-100 pointer-events-none hidden min-w-0 flex-1 items-center justify-start sm:flex',
-            isHeaderCompact && 'hidden!',
-          )}
-          {...getBookDataAttributes(bookTitle, bookData?.book?.metadata)}
-        >
-          <div
-            aria-hidden='true'
-            className='line-clamp-1 text-left text-[13px] font-medium'
-          >
-            {bookTitle}
-          </div>
-        </div>
-
-        <div className='header-tools-end bg-base-100 z-20 ms-auto flex h-full min-w-max items-center gap-x-4 ps-2 max-[350px]:gap-x-2'>
-          <Dropdown
-            label={_('View Options')}
-            containerClassName='h-8'
-            className='exclude-title-bar-mousedown dropdown-bottom dropdown-end'
-            buttonClassName='btn btn-ghost h-8 min-h-8 w-8 p-0 mt-0'
-            toggleButton={<MdOutlineMenu />}
-            onToggle={handleToggleDropdown}
-          >
-            <ReaderMoreMenu
-              bookKey={bookKey}
-              title={bookTitle}
-              onShowMetaHashDialog={() => setIsMetaHashDialogOpen(true)}
+            {isMetaHashDialogOpen && (
+              <ModalPortal showOverlay={false}>
+                <SyncInfoDialog
+                  isOpen={isMetaHashDialogOpen}
+                  bookKey={bookKey}
+                  metadata={bookData?.bookDoc?.metadata ?? bookData?.book?.metadata}
+                  storedMetaHash={bookData?.book?.metaHash}
+                  nativeLastSyncedAt={nativeLastSyncedAt}
+                  onClose={() => setIsMetaHashDialogOpen(false)}
+                />
+              </ModalPortal>
+            )}
+            <WindowButtons
+              className='window-buttons flex items-center'
+              headerRef={headerRef}
+              showMinimize={bookKeys.length == 1 && windowButtonVisible}
+              showMaximize={bookKeys.length == 1 && windowButtonVisible}
+              closeButtonLabel={_('Close Book')}
+              onClose={() => {
+                setHoveredBookKey(null);
+                onCloseBook(bookKey);
+              }}
             />
-          </Dropdown>
-          {isMetaHashDialogOpen && (
-            <ModalPortal showOverlay={false}>
-              <SyncInfoDialog
-                isOpen={isMetaHashDialogOpen}
-                bookKey={bookKey}
-                metadata={bookData?.bookDoc?.metadata ?? bookData?.book?.metadata}
-                storedMetaHash={bookData?.book?.metaHash}
-                nativeLastSyncedAt={nativeLastSyncedAt}
-                onClose={() => setIsMetaHashDialogOpen(false)}
-              />
-            </ModalPortal>
-          )}
-          <WindowButtons
-            className='window-buttons flex items-center'
-            headerRef={headerRef}
-            showMinimize={bookKeys.length == 1 && windowButtonVisible}
-            showMaximize={bookKeys.length == 1 && windowButtonVisible}
-            closeButtonLabel={_('Close Book')}
-            onClose={() => {
-              setHoveredBookKey(null);
-              onCloseBook(bookKey);
-            }}
-          />
+          </div>
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <ReaderToolsProvider bookKey={bookKey} title={bookTitle}>
+      {header}
+    </ReaderToolsProvider>
   );
 };
 

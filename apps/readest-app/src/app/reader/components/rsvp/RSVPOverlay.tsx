@@ -1034,7 +1034,7 @@ const RSVPOverlay: React.FC<RSVPOverlayProps> = ({
               {countdown !== null && (
                 <div className='mb-2 flex items-center justify-center'>
                   <span
-                    className='animate-pulse text-5xl font-bold sm:text-6xl md:text-7xl'
+                    className='animate-pulse text-5xl font-medium sm:text-6xl md:text-7xl'
                     style={{ color: accentColor }}
                   >
                     {countdown}
@@ -1064,7 +1064,7 @@ const RSVPOverlay: React.FC<RSVPOverlayProps> = ({
                     // break if sliced into before/orp/after spans (#4630). dir=rtl
                     // restores correct letter order and connection for RTL.
                     <span
-                      className='rsvp-word-whole relative z-10 font-bold'
+                      className='rsvp-word-whole relative z-10 font-medium'
                       style={{ color: effectiveOrpColor }}
                       dir={isRTLWord ? 'rtl' : undefined}
                     >
@@ -1079,7 +1079,7 @@ const RSVPOverlay: React.FC<RSVPOverlayProps> = ({
                         {wordBefore}
                       </span>
                       <span
-                        className='rsvp-word-orp relative z-10 font-bold'
+                        className='rsvp-word-orp relative z-10 font-medium'
                         style={{ color: effectiveOrpColor }}
                       >
                         {orpChar}

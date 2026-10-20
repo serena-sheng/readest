@@ -10,7 +10,6 @@ import ViewMenu from './ViewMenu';
 
 interface ReaderMoreMenuProps {
   bookKey: string;
-  title: string;
   onShowMetaHashDialog: () => void;
   setIsDropdownOpen?: (isOpen: boolean) => void;
 }
@@ -22,7 +21,6 @@ interface ReaderMoreMenuProps {
  */
 const ReaderMoreMenu: React.FC<ReaderMoreMenuProps> = ({
   bookKey,
-  title,
   onShowMetaHashDialog,
   setIsDropdownOpen,
 }) => {
@@ -37,7 +35,7 @@ const ReaderMoreMenu: React.FC<ReaderMoreMenuProps> = ({
       style={{ marginRight: appService?.isMobile || window.innerWidth < 640 ? '-36px' : 0 }}
       onCancel={() => setIsDropdownOpen?.(false)}
     >
-      <ReaderToolsMenuItems bookKey={bookKey} title={title} setIsDropdownOpen={setIsDropdownOpen} />
+      <ReaderToolsMenuItems bookKey={bookKey} setIsDropdownOpen={setIsDropdownOpen} />
       <hr aria-hidden='true' className='border-base-300 my-1' />
       <ViewMenu
         bookKey={bookKey}

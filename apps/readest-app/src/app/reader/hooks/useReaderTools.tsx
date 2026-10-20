@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useEnv } from '@/context/EnvContext';
@@ -18,8 +18,13 @@ import IdeasPanel from '../components/IdeasPanel';
  *
  * They used to live inside the header's icon togglers. The right cluster now
  * folds into the `…` menu, so the state moves here: the toolbar buttons (kept
- * for any other surface) and the menu rows drive the same drawer, and each
- * renders the returned `panel` portal exactly once.
+ * for any other surface) and the menu rows drive the same drawer.
+ *
+ * `ReaderToolsProvider` owns those hooks and mounts the four portals for the
+ * header's whole life. A dropdown unmounts its subtree when it closes, so
+ * rendering the panels inside the `…` menu made every row a no-op: the row
+ * closed the menu, which took the panel it had just opened with it. The menu
+ * rows now only call the toggles; the panels live outside it.
  */
 
 interface DrawerOptions {
@@ -196,4 +201,65 @@ export const useNotebookToggle = (bookKey: string) => {
   };
 
   return { isOpen, toggle };
+};
+
+/** What a menu row can do with a drawer: open/close it and read its state. */
+export interface ReaderToolPanelControls {
+  isOpen: boolean;
+  toggle: () => void;
+}
+
+export interface ReaderToolsPanelControls {
+  translationExpert: ReaderToolPanelControls;
+  askLocal: ReaderToolPanelControls;
+  typeset: ReaderToolPanelControls;
+  ideas: ReaderToolPanelControls;
+}
+
+const ReaderToolsContext = createContext<ReaderToolsPanelControls | null>(null);
+
+interface ReaderToolsProviderProps {
+  bookKey: string;
+  title: string;
+  children?: React.ReactNode;
+}
+
+/**
+ * Mounts the four right-hand drawers once per header, alongside whatever it
+ * wraps, and publishes their toggles to the menu rows.
+ */
+export const ReaderToolsProvider: React.FC<ReaderToolsProviderProps> = ({
+  bookKey,
+  title,
+  children,
+}) => {
+  const translationExpert = useTranslationExpertPanel({ bookKey, title });
+  const askLocal = useAskLocalPanel({ bookKey, title });
+  const typeset = useTypesetPanel({ bookKey, title });
+  const ideas = useIdeasPanel({ bookKey, title });
+
+  const controls: ReaderToolsPanelControls = {
+    translationExpert: { isOpen: translationExpert.isOpen, toggle: translationExpert.toggle },
+    askLocal: { isOpen: askLocal.isOpen, toggle: askLocal.toggle },
+    typeset: { isOpen: typeset.isOpen, toggle: typeset.toggle },
+    ideas: { isOpen: ideas.isOpen, toggle: ideas.toggle },
+  };
+
+  return (
+    <ReaderToolsContext.Provider value={controls}>
+      {children}
+      {translationExpert.panel}
+      {askLocal.panel}
+      {typeset.panel}
+      {ideas.panel}
+    </ReaderToolsContext.Provider>
+  );
+};
+
+export const useReaderToolsPanels = (): ReaderToolsPanelControls => {
+  const controls = useContext(ReaderToolsContext);
+  if (!controls) {
+    throw new Error('useReaderToolsPanels must be used inside <ReaderToolsProvider>');
+  }
+  return controls;
 };

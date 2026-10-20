@@ -181,7 +181,7 @@ const ProofreadPopup: React.FC<ProofreadPopupProps> = ({
           <div className='flex flex-col gap-4 p-4'>
             <div className='flex items-center gap-2 text-xs text-base-content/70'>
               <span className='text-nowrap font-medium'>{_('Selected text:')}</span>
-              <span className='line-clamp-1 flex-1 select-text break-words font-bold text-primary'>
+              <span className='line-clamp-1 flex-1 select-text break-words font-medium text-primary'>
                 &quot;{selection?.text || ''}&quot;
               </span>
               {onManage && (

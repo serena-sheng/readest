@@ -186,7 +186,7 @@ const BookItem: React.FC<BookItemProps> = ({
         {isSelectMode && (
           <div className='absolute bottom-1 right-1'>
             {bookSelected ? (
-              <MdCheckCircle className='fill-blue-500' />
+              <MdCheckCircle className='fill-primary' />
             ) : (
               <MdCheckCircleOutline className='fill-gray-300 drop-shadow-xs' />
             )}

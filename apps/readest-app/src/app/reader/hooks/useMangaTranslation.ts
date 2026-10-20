@@ -90,7 +90,10 @@ export const computeMangaDanmakuFit = ({
  * Map service and transport failures to a sentence a reader can act on. The
  * server's own text is never shown: it leaks provider names and HTTP jargon.
  */
-export const mangaErrorReason = (error: unknown, fallback = '出了点问题，再试一次。'): string => {
+export const mangaErrorReason = (
+  error: unknown,
+  { fallback = '出了点问题，再试一次。', baseUrl }: { fallback?: string; baseUrl?: string } = {},
+): string => {
   const message = error instanceof Error ? error.message : '';
   if (/HTTP 401|HTTP 403/.test(message)) return '模型拒绝了 API Key，去设置里换一个新的。';
   if (/HTTP 429/.test(message)) return '请求太频繁，等一下再试。';
@@ -98,7 +101,7 @@ export const mangaErrorReason = (error: unknown, fallback = '出了点问题，�
   if (/HTTP 413|too large|过大/i.test(message)) return '这一页对模型来说太大了。';
   if (/响应为空|HTTP 5\d\d/.test(message)) return '出了点问题，再试一次。';
   if (/图片读取失败|网络|fetch|不可用|Failed to fetch/i.test(message)) {
-    return '网络好像断了，检查后再试。';
+    return baseUrl ? `连不上翻译服务（${baseUrl}）` : '连不上翻译服务';
   }
   return fallback;
 };
@@ -552,7 +555,10 @@ export function useMangaTranslation(
         schedulePrefetch(image);
       } catch (error) {
         if (controller.signal.aborted) return;
-        setStatus({ kind: 'error', message: mangaErrorReason(error) });
+        setStatus({
+          kind: 'error',
+          message: mangaErrorReason(error, { baseUrl: endpoint.baseUrl }),
+        });
       } finally {
         if (abortRef.current === controller) {
           abortRef.current = null;

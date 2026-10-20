@@ -97,7 +97,7 @@ const TranslationToggler = ({ bookKey }: { bookKey: string }) => {
       <Button
         icon={
           <RiTranslate
-            className={translationEnabled ? 'text-blue-500' : 'text-base-content'}
+            className={translationEnabled ? 'text-primary' : 'text-base-content'}
             size={iconSize20}
           />
         }

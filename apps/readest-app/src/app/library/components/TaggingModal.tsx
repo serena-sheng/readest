@@ -111,7 +111,7 @@ const TaggingModal: React.FC<TaggingModalProps> = ({
         <div className={clsx('mt-4 grid grid-cols-1 gap-2 text-base md:grid-cols-2')}>
           <button
             onClick={handleRemoveAllTags}
-            className='flex items-center space-x-2 p-2 text-blue-500 disabled:text-gray-400'
+            className='flex items-center space-x-2 p-2 text-primary disabled:text-gray-400'
             disabled={!hasSelectedTags}
           >
             <MdLabelOff size={iconSize} />
@@ -119,7 +119,7 @@ const TaggingModal: React.FC<TaggingModalProps> = ({
           </button>
           <button
             onClick={handleCreateTag}
-            className='flex items-center space-x-2 p-2 text-blue-500 disabled:text-gray-400'
+            className='flex items-center space-x-2 p-2 text-primary disabled:text-gray-400'
           >
             <MdNewLabel size={iconSize} />
             <span className='truncate'>{_('Create New Tag')}</span>
@@ -150,7 +150,7 @@ const TaggingModal: React.FC<TaggingModalProps> = ({
               )}
               onClick={handleConfirmCreateTag}
             >
-              <div className='pr-1 align-bottom text-base text-blue-500 sm:text-sm'>
+              <div className='pr-1 align-bottom text-base text-primary sm:text-sm'>
                 {_('Save')}
               </div>
             </button>
@@ -183,8 +183,8 @@ const TaggingModal: React.FC<TaggingModalProps> = ({
                     <span className='min-w-0 truncate text-base sm:text-sm'>{tag}</span>
                   </div>
                   <span className='flex shrink-0 text-sm'>
-                    {state === 'all' && <MdCheck className='fill-blue-500' size={iconSize} />}
-                    {state === 'some' && <MdRemove className='fill-blue-500' size={iconSize} />}
+                    {state === 'all' && <MdCheck className='fill-primary' size={iconSize} />}
+                    {state === 'some' && <MdRemove className='fill-primary' size={iconSize} />}
                   </span>
                 </button>
               </li>
@@ -201,7 +201,7 @@ const TaggingModal: React.FC<TaggingModalProps> = ({
             onClick={handleConfirm}
             disabled={!hasChanges}
             className={clsx(
-              'flex items-center text-blue-500',
+              'flex items-center text-primary',
               !hasChanges && 'btn-disabled opacity-50',
             )}
           >

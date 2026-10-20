@@ -39,7 +39,7 @@ const StatusInfo: React.FC<StatusInfoProps> = ({
   const renderPercentage = (colorClass?: string) => (
     <span
       className={clsx(
-        'battery-percentage absolute text-[8px] font-medium leading-none',
+        'battery-percentage absolute text-caption font-medium leading-none',
         colorClass,
         isVertical && '[writing-mode:horizontal-tb]',
       )}

@@ -19,7 +19,8 @@ export const TASK_ELAPSED_THRESHOLD_SECONDS = 8;
 export type TaskStatus =
   | { kind: 'progress'; message: string; startedAt: number }
   | { kind: 'notice'; message: string }
-  | { kind: 'error'; message: string };
+  /** `detail` is the secondary line: what failed, under why it failed. */
+  | { kind: 'error'; message: string; detail?: string };
 
 export interface TaskStatusAction {
   label: string;
@@ -120,7 +121,7 @@ const TaskStatusBar: React.FC<TaskStatusBarProps> = ({
     <div
       role={isError ? 'alert' : 'status'}
       {...{ [statusAttribute]: status.kind }}
-      className='pointer-events-auto absolute left-1/2 z-[9] flex h-9 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-[10px] px-3 text-sm'
+      className='pointer-events-auto absolute left-1/2 z-[9] flex h-9 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-[10px] px-3 text-body'
       style={{
         bottom: '56px',
         backgroundColor: 'color-mix(in srgb, var(--color-base-100) 92%, transparent)',
@@ -129,6 +130,9 @@ const TaskStatusBar: React.FC<TaskStatusBarProps> = ({
       }}
     >
       <span className='text-base-content'>{message}</span>
+      {status.kind === 'error' && status.detail && (
+        <span className='text-base-content/60 shrink-0 text-xs'>{status.detail}</span>
+      )}
       {status.kind === 'progress' && onStop && (
         <button className='link link-hover shrink-0 text-sm font-medium' onClick={onStop}>
           {_('停止')}

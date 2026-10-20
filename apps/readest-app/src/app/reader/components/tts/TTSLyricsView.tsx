@@ -281,7 +281,7 @@ const TTSLyricsView = ({
                 // and ends.
                 <span
                   aria-hidden
-                  className='border-base-content/40 text-base-content/60 absolute inset-y-1 start-6 flex w-4 flex-col items-center justify-between border-s-2 ps-1 text-[10px] font-semibold leading-none'
+                  className='border-base-content/40 text-base-content/60 absolute inset-y-1 start-6 flex w-4 flex-col items-center justify-between border-s-2 ps-1 text-caption font-semibold leading-none'
                 >
                   <span>{index === loopRange.start ? 'A' : ''}</span>
                   <span>{index === loopRange.end ? 'B' : ''}</span>
@@ -297,7 +297,7 @@ const TTSLyricsView = ({
         // panel would strike through the words it is pointing at — the outline
         // on that line says which one it is instead.
         <div className='pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 items-center justify-between'>
-          <span className='text-base-content/60 w-14 shrink-0 truncate text-[10px] tabular-nums'>
+          <span className='text-base-content/60 w-14 shrink-0 truncate text-caption tabular-nums'>
             {page ? _('Page {{number}}', { number: page.current + 1 }) : ''}
           </span>
           <button

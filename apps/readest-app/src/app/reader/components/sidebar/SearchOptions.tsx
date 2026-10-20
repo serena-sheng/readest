@@ -123,7 +123,7 @@ const SearchOptions: React.FC<SearchOptionsProps> = ({
                 className={clsx(
                   'rounded-md px-2 py-1 text-xs',
                   (searchConfig.nearbyWords ?? DEFAULT_NEARBY_WORDS) === n
-                    ? 'bg-base-300 font-bold'
+                    ? 'bg-base-300 font-medium'
                     : 'hover:bg-base-300',
                 )}
                 onClick={() => updateConfig('nearbyWords', n)}
