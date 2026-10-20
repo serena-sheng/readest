@@ -2,11 +2,16 @@ import '../../setupMemoryStorage';
 
 import React from 'react';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import MangaOverlay, { MANGA_LAYER_CLASS } from '@/app/reader/components/manga/MangaOverlay';
 import type { MangaPageResult } from '@/services/manga/types';
 import { useThemeStore } from '@/store/themeStore';
+
+vi.mock('@/context/EnvContext', () => ({
+  useEnv: () => ({ appService: { isEink: false }, envConfig: {} }),
+}));
+
 
 const rect = (left: number, top: number, width: number, height: number): DOMRect => ({
   x: left,

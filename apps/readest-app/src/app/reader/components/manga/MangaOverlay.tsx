@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 
 import type { MangaPageResult } from '@/services/manga/types';
 import { useThemeStore } from '@/store/themeStore';
+import { useEnv } from '@/context/EnvContext';
 
 export const MANGA_LAYER_CLASS = 'manga-translation-layer';
 export const MANGA_GUTTER_CLASS = 'manga-danmaku-gutter';
@@ -208,6 +209,10 @@ export const computeMangaBubbleFontSize = ({
 
 const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bubble' }) => {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
+  // E-ink panels cannot blur or cast shadows; the chip needs an opaque fill and
+  // a hairline border instead, or it turns into an unreadable grey smear.
+  const { appService } = useEnv();
+  const isEink = Boolean(appService?.isEink);
   const [layerEl, setLayerEl] = useState<HTMLDivElement | null>(null);
   const [frame, setFrame] = useState<OverlayFrame | null>(null);
   const bubbleCount = result.bubbles.length;
@@ -418,9 +423,12 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       chip.style.background = isDarkMode
         ? 'rgba(255, 255, 255, 0.94)'
         : 'rgba(255, 255, 255, 0.9)';
-      chip.style.backdropFilter = 'blur(10px)';
-      chip.style.setProperty('-webkit-backdrop-filter', 'blur(10px)');
-      chip.style.boxShadow = '0 1px 4px rgba(0, 0, 0, 0.18)';
+      if (!isEink) {
+        chip.style.backdropFilter = 'blur(10px)';
+        chip.style.setProperty('-webkit-backdrop-filter', 'blur(10px)');
+      }
+      chip.style.boxShadow = isEink ? 'none' : '0 1px 4px rgba(0, 0, 0, 0.18)';
+      chip.style.border = isEink ? '1px solid rgba(58, 34, 48, 0.35)' : '';
       chip.style.borderRadius = '6px';
       chip.style.padding = `${CHIP_PADDING_Y}px ${CHIP_PADDING_X}px`;
       chip.style.maxHeight = 'none';
