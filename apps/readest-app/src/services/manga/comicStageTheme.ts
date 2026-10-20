@@ -1,10 +1,10 @@
 /**
  * Comic (CBZ) pages are app-rendered bitmaps, so they sit on a stage painted
- * by the reader rather than by the book. In a light theme that stage should be
- * the theme's own page color — not a fixed dark slab — so the page reads as
- * paper inside the reader instead of a separate black window. Dark themes keep
- * the current stage untouched: a light mat around a dark page is worse than
- * the seam it was meant to fix.
+ * by the reader rather than by the book. The stage paints the theme's own page
+ * color — not a fixed slab — so the page reads as paper inside the reader
+ * instead of a separate window. Dark themes paint their own page color too:
+ * the point is that the stage fills the whole cell and gives the page a margin,
+ * which fixes the paper bands around a dark slab in both directions.
  */
 export const COMIC_STAGE_PADDING = 24;
 export const COMIC_STAGE_STYLE_ID = 'comic-stage-theme';
@@ -18,17 +18,19 @@ export interface ComicStageTheme {
 }
 
 /**
- * The stage for a comic in the current theme, or null to leave the page as it
- * is (dark themes, or when the theme exposes no page color).
+ * The stage for a comic in the current theme, or null when the theme exposes no
+ * page color (nothing to paint with).
+ *
+ * `isDarkMode` is accepted for callers that want to vary the padding later; the
+ * background always comes from the theme itself, so a dark theme paints its own
+ * dark page color rather than being skipped.
  */
 export const getComicStageTheme = ({
-  isDarkMode,
   pageBackground,
 }: {
-  isDarkMode: boolean;
+  isDarkMode?: boolean;
   pageBackground?: string | null;
 }): ComicStageTheme | null => {
-  if (isDarkMode) return null;
   const background = pageBackground?.trim();
   if (!background) return null;
   return { background, padding: COMIC_STAGE_PADDING };

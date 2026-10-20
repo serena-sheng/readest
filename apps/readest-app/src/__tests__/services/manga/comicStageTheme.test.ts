@@ -16,8 +16,11 @@ describe('getComicStageTheme', () => {
     expect(COMIC_STAGE_PADDING).toBe(24);
   });
 
-  it('leaves the stage untouched in a dark theme', () => {
-    expect(getComicStageTheme({ isDarkMode: true, pageBackground: '#342E25' })).toBeNull();
+  it('paints the theme page color in a dark theme too', () => {
+    expect(getComicStageTheme({ isDarkMode: true, pageBackground: '#342E25' })).toEqual({
+      background: '#342E25',
+      padding: 24,
+    });
   });
 
   it('returns null when the theme exposes no page color', () => {
