@@ -91,6 +91,8 @@ import { getViewInsets } from '@/utils/insets';
 import { collectDocumentImages, DocumentImage } from '../utils/documentImages';
 import { footerReservesBand } from '../utils/footerBand';
 import { showTransientHighlight } from '../utils/transientHighlight';
+import { applyComicStageTheme, getComicStageTheme } from '@/services/manga/comicStageTheme';
+import { isComicFormat } from '@/utils/comic';
 import { handleA11yNavigation } from '@/utils/a11y';
 import { isCJKLang } from '@/utils/lang';
 import { getLocale } from '@/utils/misc';
@@ -432,6 +434,15 @@ const FoliateViewer: React.FC<{
       if (bookDoc.rendition?.layout === 'pre-paginated') {
         const pageSettings = getPageViewSettings(viewSettings);
         applyFixedlayoutStyles(detail.doc, pageSettings, undefined, bookData.book?.format);
+        if (isComicFormat(bookData.book?.format)) {
+          // Comics get the theme's page color as their stage (light themes
+          // only); dark themes keep the existing stage. The style lives in the
+          // page document, so it goes away with the iframe.
+          applyComicStageTheme(
+            detail.doc,
+            getComicStageTheme({ isDarkMode, pageBackground: getThemeCode().bg }),
+          );
+        }
         if (bookData.book?.format === 'PDF' && renderer) {
           renderer.pageColors = getPDFPageColors(pageSettings, getThemeCode());
         }
@@ -1068,9 +1079,18 @@ const FoliateViewer: React.FC<{
       const pageSettings = getPageViewSettings(viewSettings);
       viewRef.current.renderer.setStyles?.(getStyles(viewSettings, undefined, getLoadedFonts()));
       const docs = viewRef.current.renderer.getContents();
+      const comicCleanups: Array<() => void> = [];
       docs.forEach(({ doc }) => {
         if (bookDoc.rendition?.layout === 'pre-paginated') {
           applyFixedlayoutStyles(doc, pageSettings, undefined, bookData?.book?.format);
+          if (isComicFormat(bookData?.book?.format)) {
+            comicCleanups.push(
+              applyComicStageTheme(
+                doc,
+                getComicStageTheme({ isDarkMode, pageBackground: themeCode?.bg }),
+              ),
+            );
+          }
         }
         applyThemeModeClass(doc, isDarkMode);
         applyScrollModeClass(doc, viewSettings.scrolled || false);
@@ -1081,7 +1101,12 @@ const FoliateViewer: React.FC<{
       if (bookData?.book?.format === 'PDF' && themeCode && renderer) {
         renderer.pageColors = getPDFPageColors(pageSettings, themeCode);
       }
+
+      return () => {
+        comicCleanups.forEach((cleanup) => cleanup());
+      };
     }
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     themeCode,

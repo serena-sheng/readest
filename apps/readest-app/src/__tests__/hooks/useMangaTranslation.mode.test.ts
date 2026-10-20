@@ -56,7 +56,7 @@ const rect = (width: number, height: number): DOMRect => ({
 let container: HTMLDivElement;
 let view: FoliateView;
 
-const fetchMock = vi.fn(async () => ({
+const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
   ok: true,
   status: 200,
   blob: async () => ({
@@ -64,6 +64,12 @@ const fetchMock = vi.fn(async () => ({
     arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
   }),
 }));
+// The stub catches every request, including the i18n bundle the app's stores
+// load in the background; only the page image reads belong to this suite.
+const pageFetches = () =>
+  fetchMock.mock.calls.filter(([url]) =>
+    String(url).startsWith('https://example.com/manga/'),
+  );
 
 // `.ts` file, so the tree is built with createElement instead of JSX.
 const Harness = ({ bookKey, pageView }: { bookKey: string; pageView: FoliateView }) => {
@@ -120,7 +126,7 @@ describe('useMangaTranslation mode cycle', () => {
 
     await waitFor(() => expect(modeText()).toBe('bubble'));
     expect(document.querySelector(`.${MANGA_LAYER_CLASS}`)).not.toBeNull();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pageFetches()).toHaveLength(1);
     expect(translateMock).toHaveBeenCalledTimes(1);
   });
 
@@ -137,7 +143,7 @@ describe('useMangaTranslation mode cycle', () => {
       expect(document.querySelectorAll(`.${MANGA_GUTTER_CLASS}`)).toHaveLength(2),
     );
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pageFetches()).toHaveLength(1);
     expect(translateMock).toHaveBeenCalledTimes(1);
   });
 
@@ -156,7 +162,7 @@ describe('useMangaTranslation mode cycle', () => {
     expect(document.querySelector(`.${MANGA_GUTTER_CLASS}`)).toBeNull();
     // The page result stays in memory for the next cycle.
     expect(document.querySelector('#bubbles')?.textContent).toBe('1');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pageFetches()).toHaveLength(1);
     expect(translateMock).toHaveBeenCalledTimes(1);
   });
 
@@ -174,7 +180,7 @@ describe('useMangaTranslation mode cycle', () => {
     fireEvent.click(button);
     await waitFor(() => expect(modeText()).toBe('bubble'));
     expect(document.querySelector(`.${MANGA_LAYER_CLASS}`)).not.toBeNull();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pageFetches()).toHaveLength(1);
     expect(translateMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -9,6 +9,8 @@ import { useThemeStore } from '@/store/themeStore';
 export const MANGA_LAYER_CLASS = 'manga-translation-layer';
 export const MANGA_GUTTER_CLASS = 'manga-danmaku-gutter';
 export const MANGA_CHIP_CLASS = 'manga-danmaku-chip';
+export const MANGA_CHIP_BADGE_CLASS = 'manga-danmaku-chip-badge';
+export const MANGA_CHIP_BODY_CLASS = 'manga-danmaku-chip-body';
 export const MANGA_SCROLL_HINT_CLASS = 'manga-danmaku-scroll-hint';
 const BUBBLE_CLASS = 'manga-bubble-text';
 const BUBBLE_PADDING = 2;
@@ -33,6 +35,11 @@ const CHIP_PADDING_Y = 3;
 const CHIP_BORDER_LEFT = 3;
 const SCROLL_HINT_HEIGHT = 22;
 const SCROLL_HINT_THRESHOLD = 6;
+/** Pill state: the translation, or the bubble's original text. */
+const CHIP_BADGE_TEXT = '原';
+const CHIP_SOURCE_BACKGROUND = 'rgba(255, 255, 255, 0.72)';
+const CHIP_SOURCE_COLOR = '#6B5360';
+const CHIP_BADGE_COLOR = '#C81E57';
 
 export type MangaOverlayMode = 'bubble' | 'danmaku';
 
@@ -397,8 +404,7 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       chip.className = MANGA_CHIP_CLASS;
       chip.dataset['mms'] = '1';
       chip.dataset['side'] = side;
-      chip.textContent = bubble.dst;
-      chip.title = bubble.src;
+      chip.title = bubble.dst;
       chip.style.position = 'absolute';
       chip.style.boxSizing = 'border-box';
       // Pills hug their text and the image edge instead of stretching across
@@ -421,7 +427,72 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       chip.style.overflow = 'visible';
       chip.style.overflowWrap = 'anywhere';
       chip.style.whiteSpace = 'pre-wrap';
-      chip.style.pointerEvents = 'none';
+
+      // The pill toggles between the translation and the bubble's original
+      // text. It is absolutely positioned inside the fixed-height gutter, so
+      // its own content change can never reflow the page or the gutters.
+      const badge = doc.createElement('span');
+      badge.className = MANGA_CHIP_BADGE_CLASS;
+      badge.dataset['mms'] = '1';
+      badge.setAttribute('aria-hidden', 'true');
+      badge.textContent = CHIP_BADGE_TEXT;
+      badge.style.position = 'absolute';
+      // Tag the pill's top-left corner without stealing room from the text.
+      badge.style.top = '-6px';
+      badge.style.left = '-3px';
+      badge.style.padding = '0 2px';
+      badge.style.borderRadius = '3px';
+      badge.style.background = 'rgba(255, 255, 255, 0.95)';
+      badge.style.fontSize = '10px';
+      badge.style.lineHeight = '1.1';
+      badge.style.color = CHIP_BADGE_COLOR;
+      badge.style.pointerEvents = 'none';
+      badge.style.display = 'none';
+
+      const body = doc.createElement('span');
+      body.className = MANGA_CHIP_BODY_CLASS;
+      body.dataset['mms'] = '1';
+      body.textContent = bubble.dst;
+      chip.append(badge, body);
+
+      chip.tabIndex = 0;
+      chip.setAttribute('role', 'button');
+      chip.setAttribute('aria-pressed', 'false');
+      chip.setAttribute('aria-label', '显示原文');
+      chip.style.pointerEvents = 'auto';
+      chip.style.cursor = 'pointer';
+
+      let showingSource = false;
+      const renderChipState = () => {
+        body.textContent = showingSource ? bubble.src : bubble.dst;
+        chip.setAttribute('aria-pressed', showingSource ? 'true' : 'false');
+        chip.setAttribute('aria-label', showingSource ? '显示译文' : '显示原文');
+        chip.dataset['state'] = showingSource ? 'source' : 'translation';
+        badge.style.display = showingSource ? '' : 'none';
+        chip.style.background = showingSource
+          ? CHIP_SOURCE_BACKGROUND
+          : isDarkMode
+            ? 'rgba(255, 255, 255, 0.94)'
+            : 'rgba(255, 255, 255, 0.9)';
+        chip.style.color = showingSource ? CHIP_SOURCE_COLOR : '#3A2230';
+        chip.title = showingSource ? bubble.dst : bubble.src;
+      };
+      const toggleChip = () => {
+        showingSource = !showingSource;
+        renderChipState();
+      };
+      renderChipState();
+
+      chip.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleChip();
+      });
+      chip.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        event.stopPropagation();
+        toggleChip();
+      });
       gutters[side].appendChild(chip);
 
       if (!reducedMotion && typeof chip.animate === 'function') {

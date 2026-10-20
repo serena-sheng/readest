@@ -227,6 +227,9 @@ export interface UseMangaTranslationResult {
   result: MangaPageResult | null;
   /** Inline progress / empty / error feedback for the reading area. */
   status: MangaTranslationStatus | null;
+  /** Session-only "fit page" zoom for the side-column layout. */
+  fitPage: () => void;
+
   /** Why the side-column mode is unavailable on this page; null when it fits. */
   danmakuDisabledReason: MangaDanmakuBlockedReason | null;
   /** True when the vision endpoint is missing; the toolbar shows the setup guide. */
@@ -743,9 +746,21 @@ export function useMangaTranslation(
     return () => eventDispatcher.offSync('toggle-manga-translation', handleToggle);
   }, [bookKey, toggle]);
 
+  /**
+   * Session-only zoom for the side-column layout: the page often renders at
+   * 100% and leaves the columns sitting in dead space. Deliberately not written
+   * back to view settings — the reader's own zoom choice survives.
+   */
+  const fitPage = useCallback(() => {
+    const renderer = (view as unknown as { renderer?: { setAttribute?: (k: string, v: string) => void } })
+      ?.renderer;
+    renderer?.setAttribute?.('zoom', 'fit-page');
+  }, [view]);
+
   return {
     available,
     loading,
+    fitPage,
     translated: mode !== 'off',
     mode,
     imageEl,

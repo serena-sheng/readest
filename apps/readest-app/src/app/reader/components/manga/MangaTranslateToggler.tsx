@@ -14,6 +14,7 @@ import { eventDispatcher } from '@/utils/event';
 import MenuItem from '@/components/MenuItem';
 import Dialog from '@/components/Dialog';
 import { useMangaTranslation } from '../../hooks/useMangaTranslation';
+import MangaCoachMark from './MangaCoachMark';
 import MangaOverlay from './MangaOverlay';
 import MangaStatusBar from './MangaStatusBar';
 
@@ -119,6 +120,7 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
     retry,
     dismissStatus,
     dismissModelSetup,
+    fitPage,
   } = useMangaTranslation(bookKey, view, { onNarrowFallback: handleNarrowFallback });
 
   // A book that has shown a manga page keeps the slot on image-less pages
@@ -293,6 +295,16 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
                   void toggle();
                 }}
               />
+              <MenuItem
+                label={_('适应页面')}
+                description={_('只对本次会话生效，不改这本书的缩放')}
+                transient
+                setIsDropdownOpen={() => closeMenu()}
+                onClick={() => {
+                  setMenuOpen(false);
+                  fitPage();
+                }}
+              />
               {MENU_ITEMS.map((item) => {
                 const isCurrent = item.mode === mode;
                 const itemDisabled = item.mode === 'danmaku' && danmakuDisabledReason !== null;
@@ -321,6 +333,12 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
 
       {imageEl && result && mode !== 'off' && (
         <MangaOverlay imageEl={imageEl} result={result} mode={mode} />
+      )}
+
+      {/* One-time hint on the first manga page; the component itself checks
+          and records `emm.manga.coachSeen`. */}
+      {available && (
+        <MangaCoachMark triggerRef={triggerRef} onTranslate={() => void toggle()} />
       )}
 
       {statusHost &&

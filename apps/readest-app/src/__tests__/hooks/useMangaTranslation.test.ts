@@ -54,7 +54,7 @@ const rect = (width: number, height: number): DOMRect => ({
 let container: HTMLDivElement;
 let view: FoliateView;
 
-const fetchMock = vi.fn(async () => ({
+const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
   ok: true,
   status: 200,
   blob: async () => ({
@@ -62,6 +62,12 @@ const fetchMock = vi.fn(async () => ({
     arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
   }),
 }));
+// The stub catches every request, including the i18n bundle the app's stores
+// load in the background; only the page image reads belong to this suite.
+const pageFetches = () =>
+  fetchMock.mock.calls.filter(([url]) =>
+    String(url).startsWith('https://example.com/manga/'),
+  );
 const dispatchSpy = vi.spyOn(eventDispatcher, 'dispatch');
 
 // This file keeps the `.ts` name the acceptance command expects, so the
@@ -115,7 +121,7 @@ describe('useMangaTranslation', () => {
     await waitFor(() => expect(result.current.available).toBe(true));
     await result.current.toggle();
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(pageFetches()).toHaveLength(0);
     expect(translateMock).not.toHaveBeenCalled();
     await waitFor(() => expect(result.current.needsModelSetup).toBe(true));
     expect(dispatchSpy).not.toHaveBeenCalledWith('toast', expect.anything());
@@ -129,7 +135,7 @@ describe('useMangaTranslation', () => {
     await waitFor(() =>
       expect(document.querySelector('.manga-translation-layer')).not.toBeNull(),
     );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pageFetches()).toHaveLength(1);
     expect(translateMock).toHaveBeenCalledTimes(1);
     expect(translateMock).toHaveBeenCalledWith(
       expect.objectContaining({ mimeType: 'image/jpeg', width: 800, height: 1200 }),
@@ -171,7 +177,7 @@ describe('useMangaTranslation', () => {
       expect(document.querySelector('.manga-translation-layer')).not.toBeNull(),
     );
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pageFetches()).toHaveLength(1);
     expect(translateMock).toHaveBeenCalledTimes(1);
   });
 });
