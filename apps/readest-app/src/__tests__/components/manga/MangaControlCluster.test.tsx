@@ -71,15 +71,15 @@ describe('MangaControlCluster', () => {
     for (const option of MANGA_DISPLAY_OPTIONS) {
       expect(modeButton(option.label)).toBeTruthy();
     }
-    expect(modeButton('嵌字').getAttribute('aria-pressed')).toBe('true');
-    expect(modeButton('侧栏').getAttribute('aria-pressed')).toBe('false');
-    expect(modeButton('原').getAttribute('aria-pressed')).toBe('false');
+    expect(modeButton('覆盖').getAttribute('aria-pressed')).toBe('true');
+    expect(modeButton('两侧').getAttribute('aria-pressed')).toBe('false');
+    expect(modeButton('原文').getAttribute('aria-pressed')).toBe('false');
   });
 
   it('switches to the side columns in one click without passing through the bubble mode', () => {
     renderCluster({ mode: 'off' });
 
-    fireEvent.click(modeButton('侧栏'));
+    fireEvent.click(modeButton('两侧'));
 
     expect(h.onSelectMode).toHaveBeenCalledTimes(1);
     expect(h.onSelectMode).toHaveBeenCalledWith('danmaku');
@@ -128,23 +128,48 @@ describe('MangaControlCluster', () => {
     expect((translateButton() as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('dims to 60% after the pointer rests and comes back on movement', () => {
+  it('leaves the artwork entirely when idle and returns only near its corner', () => {
+    // A mouse-class pointer: the idle exit is a hover affordance.
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('hover: hover'),
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+
     renderCluster();
 
+    // Idle is a real exit: invisible and untouchable, not a translucent ghost.
+    expect(surface().style.opacity).toBe(String(MANGA_CONTROL_IDLE_OPACITY));
+    expect(surface().style.pointerEvents).toBe('none');
+
+    act(() => {
+      fireEvent.pointerMove(window, {
+        clientX: window.innerWidth - 10,
+        clientY: window.innerHeight - 10,
+      });
+    });
     expect(surface().style.opacity).toBe('1');
+    expect(surface().style.pointerEvents).toBe('auto');
 
     act(() => {
       vi.advanceTimersByTime(MANGA_CONTROL_IDLE_MS);
     });
     expect(surface().style.opacity).toBe(String(MANGA_CONTROL_IDLE_OPACITY));
+    expect(surface().style.pointerEvents).toBe('none');
 
+    // Movement anywhere else must not wake a cluster the reader is not using.
     act(() => {
-      fireEvent.pointerMove(window);
+      fireEvent.pointerMove(window, { clientX: 100, clientY: 100 });
     });
-    expect(surface().style.opacity).toBe('1');
+    expect(surface().style.opacity).toBe(String(MANGA_CONTROL_IDLE_OPACITY));
   });
 
-  it('maps 1/2/3 straight to 嵌字/侧栏/原', () => {
+  it('maps 1/2/3 straight to 覆盖/两侧/原文', () => {
     renderCluster({ mode: 'off' });
 
     act(() => {
@@ -173,18 +198,44 @@ describe('MangaControlCluster', () => {
     input.remove();
   });
 
-  it('sizes the segmented control to the spec and disables 侧栏 when it cannot fit', () => {
-    renderCluster({ danmakuDisabledReason: 'narrow' });
+  it('sizes every control to a 44px touch target and disables 两侧 when it cannot fit', () => {
+    renderCluster({ danmakuDisabledReason: 'narrow', mode: 'bubble' });
 
     const group = screen.getByRole('group', { name: '显示方式' });
     expect(group.style.width).toBe(`${MANGA_SEGMENT_WIDTH}px`);
     expect(group.style.height).toBe(`${MANGA_SEGMENT_HEIGHT}px`);
-    expect((modeButton('侧栏') as HTMLButtonElement).disabled).toBe(true);
-    expect(modeButton('侧栏').title).toContain('窗口太窄');
+    expect(MANGA_SEGMENT_HEIGHT).toBe(44);
+    expect(translateButton().className).toContain('h-11');
+    expect(screen.getByRole('button', { name: '更多' }).className).toContain('h-11');
+    expect((modeButton('两侧') as HTMLButtonElement).disabled).toBe(true);
+    expect(modeButton('两侧').title).toContain('窗口太窄');
+  });
+
+  it('marks the selected state with a filled chip, not a hairline', () => {
+    renderCluster({ mode: 'bubble' });
+
+    expect(modeButton('覆盖').className).toContain('bg-primary/12');
+    expect(modeButton('覆盖').className).toContain('text-primary');
+    expect(modeButton('覆盖').style.borderBottom).toBe('');
+    expect(modeButton('两侧').className).not.toContain('bg-primary/12');
+  });
+
+  it('keeps the primary label and width stable, so hover never moves the cluster', () => {
+    renderCluster({ mode: 'off' });
+
+    // The label is always rendered at its final width.
+    expect(translateButton().textContent).toContain('翻译本页');
+    expect(translateButton().className).toContain('min-w-[96px]');
+    expect(translateButton().className).not.toContain('group-hover');
+    expect(translateButton().querySelector('span')!.className).not.toContain('max-w-0');
   });
 
   it('moves to the top-right corner when the reading area is shorter than 480px', () => {
-    Object.defineProperty(window, 'innerHeight', { value: 400, configurable: true, writable: true });
+    Object.defineProperty(window, 'innerHeight', {
+      value: 400,
+      configurable: true,
+      writable: true,
+    });
     renderCluster();
 
     const cluster = screen.getByTestId('manga-control-cluster');

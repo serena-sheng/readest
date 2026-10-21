@@ -29,16 +29,29 @@ const note = (overrides: Partial<MarginNote> = {}): MarginNote => ({
   ...overrides,
 });
 
+const PAGE = { left: 100, right: 900, top: 40, bottom: 840 };
+
 const renderRail = (
   props: Partial<ComponentProps<typeof MarginRail>> = {},
   tops: Record<string, number> = {},
 ) =>
   render(
-    <MarginRail bookKey={BOOK} narrow={false} measureAnchor={(cfi) => tops[cfi] ?? 0} {...props} />,
+    <MarginRail
+      bookKey={BOOK}
+      narrow={false}
+      measurePage={() => PAGE}
+      measureAnchor={(cfi) => tops[cfi] ?? null}
+      {...props}
+    />,
   );
 
 beforeEach(() => {
   clear(BOOK);
+  Object.defineProperty(window, 'innerWidth', {
+    value: 1400,
+    configurable: true,
+    writable: true,
+  });
 });
 
 afterEach(cleanup);
@@ -49,7 +62,7 @@ describe('MarginRail', () => {
     add(BOOK, note({ id: 'b', anchorCfi: 'cfi-b', at: 2 }));
     add(BOOK, note({ id: 'c', anchorCfi: 'cfi-c', at: 3 }));
 
-    renderRail();
+    renderRail({}, { 'epubcfi(/6/2!/4/2/1:0)': 60, 'cfi-b': 200, 'cfi-c': 400 });
 
     expect(screen.getAllByTestId('margin-note')).toHaveLength(3);
   });
@@ -58,7 +71,7 @@ describe('MarginRail', () => {
     add(BOOK, note({ id: 'a' }));
     add(BOOK, note({ id: 'b', anchorCfi: 'cfi-b', at: 2 }));
 
-    renderRail();
+    renderRail({}, { 'epubcfi(/6/2!/4/2/1:0)': 60, 'cfi-b': 260 });
 
     expect(screen.getAllByTestId('margin-note-leader')).toHaveLength(2);
   });
@@ -114,7 +127,7 @@ describe('MarginRail', () => {
   it('expands a note into a floating panel and closes it with Escape', () => {
     add(BOOK, note({ id: 'a', text: '一段很长的译文' }));
 
-    renderRail();
+    renderRail({}, { 'epubcfi(/6/2!/4/2/1:0)': 60 });
 
     expect(screen.queryByTestId('margin-note-panel')).toBeNull();
     fireEvent.click(screen.getByTestId('margin-note-text'));
@@ -129,7 +142,7 @@ describe('MarginRail', () => {
     add(BOOK, note({ id: 'a' }));
     add(BOOK, note({ id: 'b', anchorCfi: 'cfi-b', at: 2 }));
 
-    renderRail();
+    renderRail({}, { 'epubcfi(/6/2!/4/2/1:0)': 60, 'cfi-b': 260 });
     fireEvent.click(screen.getAllByTestId('margin-note-text')[0]!);
 
     act(() => {

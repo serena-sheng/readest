@@ -95,6 +95,7 @@ const MangaTranslateToggler: React.FC<MangaTranslateTogglerProps> = ({ bookKey, 
             onRetranslate={() => void retranslate()}
             onClose={() => selectMode('off')}
             hint={available ? <MangaHint /> : null}
+            pageImage={imageEl}
           />,
           host,
         )}

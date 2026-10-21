@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 import { useReaderStore } from '@/store/readerStore';
 import { list, remove, subscribe, type MarginNote } from '@/services/marginalia/store';
@@ -50,13 +50,56 @@ const paragraphOf = (node: Node): HTMLElement | null => {
   return element;
 };
 
+/** The visible page's box in viewport coordinates. */
+export interface PageRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
 /**
- * Where a CFI lands vertically, measured against the rail's own top edge.
+ * The visible page, from the paginator's own box — not from the window's
+ * `--reader-measure`. In a spread the paginator spans both columns, so this is
+ * still the page area's outer edge; the rail is only shown for a single column.
+ */
+export const measurePageRect = (bookKey: string): PageRect | null => {
+  const view = useReaderStore.getState().getView(bookKey);
+  const renderer = view?.renderer;
+  if (!renderer?.getBoundingClientRect) return null;
+  const rect = renderer.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+};
+
+/**
+ * The gutter's box beside the page's outer edge, or null when it would land on
+ * the text. Clamping into the viewport first means a page that fills the
+ * window yields null instead of a rail drawn over its last characters.
+ */
+export const placeRail = (
+  page: PageRect,
+  railWidth: number,
+  isRtl: boolean,
+  viewportWidth: number,
+): { left: number; top: number; width: number; height: number } | null => {
+  if (page.right <= page.left || page.bottom <= page.top) return null;
+  const rawLeft = isRtl ? page.left - LEAD_LENGTH - railWidth : page.right + LEAD_LENGTH;
+  // Keep the column on screen; the text never moves for it, so an off-screen
+  // rail is not an option.
+  const left = Math.min(Math.max(0, rawLeft), Math.max(0, viewportWidth - railWidth));
+  const overlapsText = left < page.right && left + railWidth > page.left;
+  if (overlapsText) return null;
+  return { left, top: page.top, width: railWidth, height: page.bottom - page.top };
+};
+
+/**
+ * Where a CFI lands vertically, measured against the page's top edge.
  *
  * The CFI resolves inside an iframe; its rect is viewport-relative, the rail's
- * is not, so the iframe's own offset is added and the rail top subtracted.
+ * is not, so the iframe's own offset is added and the page top subtracted.
  */
-const measureFromView = (bookKey: string, anchorCfi: string, railTop: number): number | null => {
+const measureFromView = (bookKey: string, anchorCfi: string, pageTop: number): number | null => {
   const view = useReaderStore.getState().getView(bookKey);
   if (!view?.resolveCFI || !view.renderer?.getContents) return null;
   try {
@@ -71,7 +114,7 @@ const measureFromView = (bookKey: string, anchorCfi: string, railTop: number): n
     const rect = (block ?? range).getBoundingClientRect();
     const frame = content.doc.defaultView?.frameElement as HTMLElement | null;
     const frameTop = frame?.getBoundingClientRect().top ?? 0;
-    return frameTop + rect.top - railTop;
+    return frameTop + rect.top - pageTop;
   } catch {
     return null;
   }
@@ -86,15 +129,18 @@ interface Placement {
  * Vertical stacking: notes follow their paragraph, and when a note would land
  * on top of the one above it (same paragraph or a nearby one), it is pushed
  * down. Same-paragraph notes touch; different paragraphs keep an 8px gap.
+ * Notes whose anchor was not measured are left out entirely — a note pinned to
+ * the top edge would be a lie about where its paragraph is.
  */
 const placeNotes = (notes: MarginNote[], tops: Record<string, number>): Placement[] => {
-  const sorted = [...notes].sort(
-    (a, b) => (tops[a.anchorCfi] ?? 0) - (tops[b.anchorCfi] ?? 0) || a.at - b.at,
+  const measured = notes.filter((note) => tops[note.anchorCfi] !== undefined);
+  const sorted = [...measured].sort(
+    (a, b) => tops[a.anchorCfi]! - tops[b.anchorCfi]! || a.at - b.at,
   );
   let lastAnchor: string | null = null;
   let lastTop = Number.NEGATIVE_INFINITY;
   return sorted.map((note) => {
-    const anchorTop = tops[note.anchorCfi] ?? 0;
+    const anchorTop = tops[note.anchorCfi]!;
     const floor =
       lastTop === Number.NEGATIVE_INFINITY
         ? anchorTop
@@ -110,8 +156,12 @@ interface MarginRailProps {
   bookKey: string;
   /** Test seam / alternate anchor source: offset within the rail, or null. */
   measureAnchor?: (anchorCfi: string) => number | null;
+  /** Test seam / alternate page source; defaults to the paginator's box. */
+  measurePage?: () => PageRect | null;
   /** Force the collapsed badge layout regardless of viewport width. */
   narrow?: boolean;
+  /** Test seam: force the spread's window-edge dots. */
+  spread?: boolean;
   /** Force reading direction; defaults to the book's view settings. */
   rtl?: boolean;
 }
@@ -119,7 +169,9 @@ interface MarginRailProps {
 const MarginRail: React.FC<MarginRailProps> = ({
   bookKey,
   measureAnchor,
+  measurePage,
   narrow: forceNarrow,
+  spread: forceSpread,
   rtl,
 }) => {
   const notes = useSyncExternalStore(
@@ -130,17 +182,14 @@ const MarginRail: React.FC<MarginRailProps> = ({
   const storeRtl = useReaderStore((state) => state.viewStates[bookKey]?.viewSettings?.rtl ?? false);
   const isRtl = rtl ?? storeRtl;
 
-  const railRef = useRef<HTMLDivElement | null>(null);
   const [tick, setTick] = useState(0);
-  const [viewportWidth, setViewportWidth] = useState(
-    () => (typeof window !== 'undefined' ? window.innerWidth : NARROW_BREAKPOINT),
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : NARROW_BREAKPOINT,
   );
   const viewportNarrow = viewportWidth < NARROW_BREAKPOINT;
   const railWidth = railWidthFor(viewportWidth);
   const [openNoteId, setOpenNoteId] = useState<string | null>(null);
   const [openBadge, setOpenBadge] = useState<string | null>(null);
-
-  const collapsed = forceNarrow ?? viewportNarrow;
 
   // Follow page turns and scrolling: the note keeps its anchor and only its
   // transform changes.
@@ -172,39 +221,60 @@ const MarginRail: React.FC<MarginRailProps> = ({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // The rail's rect is only available after mount; measure once then.
+  // The page box and the rail's own box are only settled after mount; measure
+  // once then instead of waiting for the first relocate.
   useEffect(() => {
     setTick((value) => value + 1);
   }, [bookKey]);
 
+  const pageRect = useMemo(() => {
+    const measure = measurePage ?? (() => measurePageRect(bookKey));
+    return measure();
+    // `tick` is the measurement invalidation signal (relocate, scroll, mount).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookKey, measurePage, tick]);
+
+  const spread = useMemo(() => {
+    if (forceSpread !== undefined) return forceSpread;
+    const view = useReaderStore.getState().getView(bookKey);
+    return (view?.renderer?.columnCount ?? 1) > 1;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookKey, forceSpread, tick]);
+
   const tops = useMemo(() => {
     const result: Record<string, number> = {};
-    const railTop = railRef.current?.getBoundingClientRect().top ?? 0;
+    const pageTop = pageRect?.top ?? 0;
     for (const note of notes) {
       const top = measureAnchor
         ? measureAnchor(note.anchorCfi)
-        : measureFromView(bookKey, note.anchorCfi, railTop);
+        : measureFromView(bookKey, note.anchorCfi, pageTop);
       if (top != null && Number.isFinite(top)) result[note.anchorCfi] = top;
     }
     return result;
-    // `tick` is the measurement invalidation signal (relocate, scroll, mount).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, measureAnchor, bookKey, tick]);
+  }, [notes, measureAnchor, bookKey, pageRect, tick]);
 
   const placements = useMemo(() => placeNotes(notes, tops), [notes, tops]);
 
   const badgeGroups = useMemo(() => {
     const groups: Array<{ anchorCfi: string; top: number; notes: MarginNote[] }> = [];
     for (const note of notes) {
+      const top = tops[note.anchorCfi];
+      // An unmeasured anchor has no place on the page; its dot would point at
+      // the wrong paragraph.
+      if (top === undefined) continue;
       const existing = groups.find((group) => group.anchorCfi === note.anchorCfi);
       if (existing) existing.notes.push(note);
-      else
-        groups.push({ anchorCfi: note.anchorCfi, top: tops[note.anchorCfi] ?? 0, notes: [note] });
+      else groups.push({ anchorCfi: note.anchorCfi, top, notes: [note] });
     }
     return groups.sort((a, b) => a.top - b.top);
   }, [notes, tops]);
 
-  if (notes.length === 0) return null;
+  // `narrow` only forces the badge layout on; it never keeps the one-sided
+  // gutter alive for a spread.
+  const collapsed = forceNarrow === true || viewportNarrow || spread;
+
+  if (notes.length === 0 || !pageRect) return null;
 
   const deleteNote = (id: string) => {
     remove(bookKey, id);
@@ -214,16 +284,17 @@ const MarginRail: React.FC<MarginRailProps> = ({
   if (collapsed) {
     return (
       <div
-        ref={railRef}
         dir={isRtl ? 'rtl' : 'ltr'}
-        className='pointer-events-none absolute z-[25]'
+        className='pointer-events-none fixed z-[25]'
         data-testid='margin-rail'
         data-mode='badges'
         style={{
-          top: 0,
-          bottom: 0,
+          top: pageRect.top,
+          height: pageRect.bottom - pageRect.top,
           width: 8,
-          [isRtl ? 'left' : 'right']: 'calc((100% - var(--reader-measure)) / 2 - 4px)',
+          // A spread has no gutter of its own: the dots sit at the window edge
+          // and open a side sheet instead of drawing a column over a page.
+          [isRtl ? 'left' : 'right']: 4,
         }}
       >
         {badgeGroups.map((group) => (
@@ -267,20 +338,22 @@ const MarginRail: React.FC<MarginRailProps> = ({
     );
   }
 
+  const layout = placeRail(pageRect, railWidth, isRtl, viewportWidth);
+  // No room beside the page means no rail: drawing it over the text is worse
+  // than hiding the trace until the window has a gutter again.
+  if (!layout) return null;
+
   return (
     <div
-      ref={railRef}
       dir={isRtl ? 'rtl' : 'ltr'}
-      className='pointer-events-none absolute z-[25]'
+      className='pointer-events-none fixed z-[25]'
       data-testid='margin-rail'
       data-mode='rail'
       style={{
-        top: 0,
-        bottom: 0,
-        width: railWidth,
-        [isRtl ? 'left' : 'right']: `calc((100% - var(--reader-measure)) / 2 - ${
-          railWidth + LEAD_LENGTH
-        }px)`,
+        left: layout.left,
+        top: layout.top,
+        width: layout.width,
+        height: layout.height,
       }}
     >
       {placements.map(({ note, top }) => (

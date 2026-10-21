@@ -30,7 +30,32 @@ const KINDS: Record<string, true> = {
 const cache = new Map<string, MarginNote[]>();
 const listeners = new Set<() => void>();
 
-const storageKey = (bookKey: string) => `${STORAGE_PREFIX}${bookKey}`;
+/**
+ * A reader book key is the book hash plus a per-session random suffix
+ * (`<hash>-<7 alnum>`). The margin belongs to the book, not to the session, so
+ * the storage key drops that suffix: notes survive a reload. Keys written
+ * before this normalization carry the suffix and are migrated on read.
+ */
+export const stableBookKey = (bookKey: string): string => {
+  const match = /^(.*)-[a-z0-9]{7}$/.exec(bookKey);
+  return match?.[1] || bookKey;
+};
+
+const storageKey = (bookKey: string) => `${STORAGE_PREFIX}${stableBookKey(bookKey)}`;
+
+const readNotesAt = (key: string): MarginNote[] => {
+  try {
+    const raw = getStorage()?.getItem(key);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    // A truncated / hand-edited / version-mismatched entry degrades to an
+    // empty margin rather than breaking the reader.
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isValidNote);
+  } catch {
+    return [];
+  }
+};
 
 const isValidNote = (value: unknown): value is MarginNote => {
   if (!value || typeof value !== 'object') return false;
@@ -57,17 +82,33 @@ const getStorage = (): Storage | null => {
 };
 
 const readStorage = (bookKey: string): MarginNote[] => {
-  try {
-    const raw = getStorage()?.getItem(storageKey(bookKey));
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    // A truncated / hand-edited / version-mismatched entry degrades to an
-    // empty margin rather than breaking the reader.
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isValidNote);
-  } catch {
-    return [];
+  const stableKey = storageKey(bookKey);
+  const notes = readNotesAt(stableKey);
+  const storage = getStorage();
+  if (!storage) return notes;
+  // Older builds stored one key per session: `<stable>-<random suffix>`.
+  // Collect them all, fold them into the stable key, and drop the copies; the
+  // stable key wins when both carry the same note id.
+  const legacyPrefix = `${stableKey}-`;
+  const legacyKeys: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (!key?.startsWith(legacyPrefix)) continue;
+    // Only the reader's own session suffix counts — a different book whose
+    // hash merely starts with this one must not be swallowed.
+    const suffix = key.slice(legacyPrefix.length);
+    if (suffix.length === 7 && /^[a-z0-9]{7}$/.test(suffix)) legacyKeys.push(key);
   }
+  if (legacyKeys.length === 0) return notes;
+  const migrated = new Map<string, MarginNote>();
+  for (const key of legacyKeys) {
+    for (const note of readNotesAt(key)) migrated.set(note.id, note);
+  }
+  for (const note of notes) migrated.set(note.id, note);
+  const merged = [...migrated.values()].sort((a, b) => a.at - b.at);
+  writeStorage(bookKey, merged);
+  for (const key of legacyKeys) storage.removeItem(key);
+  return merged;
 };
 
 const writeStorage = (bookKey: string, notes: MarginNote[]) => {

@@ -93,17 +93,17 @@ describe('MangaTranslateToggler controls', () => {
 
     const host = document.getElementById('gridcell-book-1')!;
     expect(within(host).getByTestId('manga-control-cluster')).toBeTruthy();
-    for (const label of ['嵌字', '侧栏', '原']) {
+    for (const label of ['覆盖', '两侧', '原文']) {
       expect(within(host).getByRole('button', { name: label })).toBeTruthy();
     }
     // The toolbar slot itself no longer owns a cycling button.
     expect(container.querySelector('button')).toBeNull();
   });
 
-  it('switches to 侧栏 in one click, never cycling through 嵌字', () => {
+  it('switches to 两侧 in one click, never cycling through 覆盖', () => {
     renderToggler();
 
-    fireEvent.click(modeButton('侧栏'));
+    fireEvent.click(modeButton('两侧'));
 
     expect(h.setMode).toHaveBeenCalledTimes(1);
     expect(h.setMode).toHaveBeenCalledWith('danmaku');
@@ -120,20 +120,20 @@ describe('MangaTranslateToggler controls', () => {
     h.state = baseState('bubble');
     rerender(React.createElement(MangaTranslateToggler, { bookKey: 'book-1', view: null }));
     expect((translateButton() as HTMLButtonElement).disabled).toBe(true);
-    expect(modeButton('嵌字').getAttribute('aria-pressed')).toBe('true');
+    expect(modeButton('覆盖').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('marks every display state with aria-pressed', () => {
     h.state = baseState('danmaku');
     const { rerender } = renderToggler();
 
-    expect(modeButton('嵌字').getAttribute('aria-pressed')).toBe('false');
-    expect(modeButton('侧栏').getAttribute('aria-pressed')).toBe('true');
-    expect(modeButton('原').getAttribute('aria-pressed')).toBe('false');
+    expect(modeButton('覆盖').getAttribute('aria-pressed')).toBe('false');
+    expect(modeButton('两侧').getAttribute('aria-pressed')).toBe('true');
+    expect(modeButton('原文').getAttribute('aria-pressed')).toBe('false');
 
     h.state = baseState('off');
     rerender(React.createElement(MangaTranslateToggler, { bookKey: 'book-1', view: null }));
-    expect(modeButton('原').getAttribute('aria-pressed')).toBe('true');
+    expect(modeButton('原文').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('reports progress with aria-busy and keeps the display choices available', () => {
@@ -142,9 +142,9 @@ describe('MangaTranslateToggler controls', () => {
 
     expect(translateButton().getAttribute('aria-busy')).toBe('true');
     expect((translateButton() as HTMLButtonElement).disabled).toBe(true);
-    expect((modeButton('嵌字') as HTMLButtonElement).disabled).toBe(false);
+    expect((modeButton('覆盖') as HTMLButtonElement).disabled).toBe(false);
 
-    fireEvent.click(modeButton('嵌字'));
+    fireEvent.click(modeButton('覆盖'));
     expect(h.setMode).toHaveBeenCalledWith('bubble');
   });
 
@@ -158,14 +158,14 @@ describe('MangaTranslateToggler controls', () => {
 
     expect(screen.getByTestId('manga-control-cluster')).toBeTruthy();
     expect((translateButton() as HTMLButtonElement).disabled).toBe(true);
-    expect((modeButton('嵌字') as HTMLButtonElement).disabled).toBe(true);
+    expect((modeButton('覆盖') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('disables 侧栏 and states why when the gutters cannot fit', () => {
+  it('disables 两侧 and states why when the gutters cannot fit', () => {
     h.state = { ...baseState('bubble'), danmakuDisabledReason: 'narrow' };
     renderToggler();
 
-    const side = modeButton('侧栏') as HTMLButtonElement;
+    const side = modeButton('两侧') as HTMLButtonElement;
     expect(side.disabled).toBe(true);
     expect(side.title).toContain('窗口太窄');
   });

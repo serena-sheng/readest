@@ -9,20 +9,26 @@ import type { MangaDanmakuBlockedReason } from '../../hooks/useMangaTranslation'
 
 /** Distance the cluster keeps from the reading area's edges. */
 export const MANGA_CONTROL_EDGE = 24;
-/** Pointer stillness after which the cluster steps back. */
+/** Pointer stillness after which the cluster leaves the page. */
 export const MANGA_CONTROL_IDLE_MS = 2500;
-export const MANGA_CONTROL_IDLE_OPACITY = 0.6;
+/** Idle is a real exit: the cluster takes no pointer and paints nothing. */
+export const MANGA_CONTROL_IDLE_OPACITY = 0;
+/** How close (px) the pointer must come to the lower-right corner to return. */
+export const MANGA_CONTROL_WAKE_DISTANCE = 120;
+/** Duration of the enter/leave fade. */
+export const MANGA_CONTROL_FADE_MS = 160;
 /** Below this reading-area height the cluster moves to the top edge. */
 export const MANGA_SHORT_VIEWPORT_HEIGHT = 480;
 
 export const MANGA_SEGMENT_WIDTH = 132;
-export const MANGA_SEGMENT_HEIGHT = 28;
+/** One touch target per segment: 44px, matching the primary action. */
+export const MANGA_SEGMENT_HEIGHT = 44;
 
 /** The three display states, in the order the 1/2/3 shortcuts follow. */
 export const MANGA_DISPLAY_OPTIONS: Array<{ mode: MangaTranslationMode; label: string }> = [
-  { mode: 'bubble', label: '嵌字' },
-  { mode: 'danmaku', label: '侧栏' },
-  { mode: 'off', label: '原' },
+  { mode: 'bubble', label: '覆盖' },
+  { mode: 'danmaku', label: '两侧' },
+  { mode: 'off', label: '原文' },
 ];
 
 const KEY_TO_MODE: Record<string, MangaTranslationMode> = {
@@ -49,6 +55,8 @@ export interface MangaControlClusterProps {
   onClose: () => void;
   /** The first-run note, rendered beside the cluster. */
   hint?: React.ReactNode;
+  /** The page artwork; the cluster aligns to its outer corner, not the white margin. */
+  pageImage?: HTMLImageElement | null;
 }
 
 /**
@@ -68,36 +76,98 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
   onRetranslate,
   onClose,
   hint,
+  pageImage,
 }) => {
-  const [idle, setIdle] = useState(false);
+  // The cluster starts out of the way: it is a tool for the page, not a
+  // permanent overlay. Only a pointer approaching its corner brings it in.
+  const [idle, setIdle] = useState(true);
+  const [hoverCapable, setHoverCapable] = useState(true);
   const [shortViewport, setShortViewport] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [corner, setCorner] = useState<{ right: number; bottom: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const translated = mode !== 'off';
   const translateDisabled = !available || translated || loading;
+  const expanded = menuOpen || listOpen;
 
-  // The cluster fades back while the pointer rests, so artwork stays legible;
-  // any movement brings it forward again. Hovering it also counts as intent.
+  // Idle is a real exit on hover-capable pointers: the cluster leaves the
+  // artwork entirely and only a pointer entering the lower-right corner
+  // (MANGA_CONTROL_WAKE_DISTANCE) brings it back. Touch screens have no hover,
+  // so there it simply stays.
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const update = () => setHoverCapable(query.matches);
+    update();
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (!hoverCapable) {
+      setIdle(false);
+      return;
+    }
     let timer: number | undefined;
     const wake = () => {
       setIdle(false);
       clearTimeout(timer);
       timer = window.setTimeout(() => setIdle(true), MANGA_CONTROL_IDLE_MS);
     };
-    wake();
-    window.addEventListener('pointermove', wake, { passive: true });
+    const onPointerMove = (event: PointerEvent) => {
+      const insideCorner =
+        window.innerWidth - event.clientX <= MANGA_CONTROL_WAKE_DISTANCE &&
+        window.innerHeight - event.clientY <= MANGA_CONTROL_WAKE_DISTANCE;
+      if (insideCorner) wake();
+    };
+    // A keyboard or a click anywhere still counts as intent, so the controls
+    // never stay invisible while the reader is using them.
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerdown', wake, { passive: true });
     window.addEventListener('keydown', wake);
+    timer = window.setTimeout(() => setIdle(true), MANGA_CONTROL_IDLE_MS);
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('pointermove', wake);
+      window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerdown', wake);
       window.removeEventListener('keydown', wake);
     };
-  }, []);
+  }, [hoverCapable]);
+
+  // Align with the artwork's lower-right corner, not the reading cell's: a
+  // fixed-layout page is letterboxed, and a cluster on the white band looks
+  // detached from the picture.
+  useEffect(() => {
+    if (!pageImage) {
+      setCorner(null);
+      return;
+    }
+    const measure = () => {
+      const rect = pageImage.getBoundingClientRect();
+      const frame = pageImage.ownerDocument?.defaultView?.frameElement as HTMLElement | null;
+      const frameRect = frame?.getBoundingClientRect();
+      const host = rootRef.current?.parentElement;
+      const hostRect = host?.getBoundingClientRect();
+      if (!hostRect || !rect.width || !rect.height) {
+        setCorner(null);
+        return;
+      }
+      setCorner({
+        right: hostRect.right - (rect.right + (frameRect?.left ?? 0)),
+        bottom: hostRect.bottom - (rect.bottom + (frameRect?.top ?? 0)),
+      });
+    };
+    measure();
+    const frameView = pageImage.ownerDocument?.defaultView ?? null;
+    window.addEventListener('resize', measure);
+    frameView?.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      frameView?.removeEventListener('resize', measure);
+    };
+  }, [pageImage]);
 
   // Short reading areas put the cluster at the top, where it cannot cover the
   // page's lower speech bubbles.
@@ -166,7 +236,10 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
       style={
         shortViewport
           ? { top: `${MANGA_CONTROL_EDGE}px`, right: `${MANGA_CONTROL_EDGE}px` }
-          : { bottom: `${MANGA_CONTROL_EDGE}px`, right: `${MANGA_CONTROL_EDGE}px` }
+          : {
+              bottom: `${MANGA_CONTROL_EDGE + (corner?.bottom ?? 0)}px`,
+              right: `${MANGA_CONTROL_EDGE + (corner?.right ?? 0)}px`,
+            }
       }
     >
       <div className='relative flex flex-col items-end gap-2'>
@@ -205,8 +278,12 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
 
         <div
           data-testid='manga-control-surface'
-          className='pointer-events-auto flex items-center gap-1 rounded-[6px] border border-study-ink/10 bg-study-page p-1'
-          style={{ opacity: idle ? MANGA_CONTROL_IDLE_OPACITY : 1 }}
+          className='flex items-center gap-1 rounded-[6px] border border-study-ink/10 bg-study-page p-1'
+          style={{
+            opacity: idle && !expanded ? MANGA_CONTROL_IDLE_OPACITY : 1,
+            pointerEvents: idle && !expanded ? 'none' : 'auto',
+            transition: `opacity ${MANGA_CONTROL_FADE_MS}ms cubic-bezier(.23,1,.32,1)`,
+          }}
           onPointerEnter={() => setIdle(false)}
           onPointerDown={() => setIdle(false)}
         >
@@ -217,12 +294,12 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
             title={available ? '翻译本页' : '本页没有可翻译的图片'}
             disabled={translateDisabled}
             onClick={onTranslate}
-            className='group flex h-8 items-center rounded-[4px] bg-primary px-2 text-primary-content enabled:hover:brightness-105 disabled:opacity-35'
+            className='flex h-11 min-w-[96px] items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3 text-[12px] leading-none text-primary-content enabled:hover:brightness-105 disabled:opacity-35'
           >
             <MdTranslate size={18} aria-hidden='true' />
-            <span className='ml-0 max-w-0 overflow-hidden whitespace-nowrap text-[12px] opacity-0 group-hover:ml-1 group-hover:max-w-[5em] group-hover:opacity-100'>
-              翻译本页
-            </span>
+            {/* The label is always present at its final width: hovering must
+                never grow the button and shift the whole toolbar. */}
+            <span className='whitespace-nowrap'>翻译本页</span>
           </button>
 
           <div
@@ -238,7 +315,7 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
               const title =
                 option.mode === 'danmaku'
                   ? danmakuDisabledReason === 'tall'
-                    ? '长条漫只用「嵌字」'
+                    ? '长条漫只用「覆盖」'
                     : danmakuDisabledReason === 'narrow'
                       ? '窗口太窄，放不下两侧译文'
                       : '译文排在画面两侧'
@@ -251,14 +328,11 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
                   disabled={optionDisabled}
                   title={title}
                   onClick={() => pickMode(option.mode)}
-                  className='flex-1 text-[12px] disabled:opacity-35'
-                  style={{
-                    color: selected ? 'var(--color-primary)' : 'var(--color-study-ink)',
-                    opacity: selected ? 1 : 0.6,
-                    borderBottom: selected
-                      ? '1px solid var(--color-primary)'
-                      : '1px solid transparent',
-                  }}
+                  className={`flex-1 text-[12px] transition-colors duration-150 ease-study disabled:opacity-35 ${
+                    selected
+                      ? 'bg-primary/12 text-primary'
+                      : 'text-study-ink/60 hover:bg-study-chip hover:text-study-ink'
+                  }`}
                 >
                   {option.label}
                 </button>
@@ -273,7 +347,7 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
               aria-haspopup='menu'
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((open) => !open)}
-              className='flex h-8 w-8 items-center justify-center rounded-[4px] text-study-ink/60 hover:bg-study-chip hover:text-study-ink'
+              className='flex h-11 w-11 items-center justify-center rounded-[4px] text-study-ink/60 hover:bg-study-chip hover:text-study-ink'
             >
               <MdMoreHoriz size={18} aria-hidden='true' />
             </button>

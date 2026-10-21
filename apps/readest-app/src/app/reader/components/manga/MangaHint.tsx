@@ -4,7 +4,8 @@ import React, { useCallback, useState } from 'react';
 
 /** Storage flag telling us the reader has retired the manga hint for good. */
 export const MANGA_HINT_SEEN_KEY = 'emm.manga.hintSeen';
-export const MANGA_HINT_MESSAGE = '这里是漫画翻译 · 三种显示方式随时可切';
+export const MANGA_HINT_MESSAGE =
+  '这里是漫画翻译 · 「覆盖」把译文放进气泡，「两侧」排在画面左右，「原文」收起译文';
 /** The card is small on purpose: it explains the cluster, not the feature. */
 export const MANGA_HINT_WIDTH = 240;
 

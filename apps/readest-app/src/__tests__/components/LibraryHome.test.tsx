@@ -58,7 +58,9 @@ describe('LibraryHome', () => {
       createMockBook({ hash: 'b', title: '看不见的城市', updatedAt: 1000 }),
     ]);
 
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('书房');
+    const pageTitle = screen.getByRole('heading', { level: 1 });
+    expect(pageTitle.textContent).toBe('书房');
+    expect(pageTitle.className).toContain('text-section');
     expect(screen.getByRole('region', { name: '桌上这本' })).toBeTruthy();
     expect(screen.getByRole('region', { name: '接下来' })).toBeTruthy();
     expect(screen.getByRole('region', { name: '书架' })).toBeTruthy();
@@ -76,6 +78,59 @@ describe('LibraryHome', () => {
     fireEvent.click(within(desk).getByRole('button', { name: '继续阅读' }));
 
     expect(props.onOpenBook).toHaveBeenCalledWith(newer);
+  });
+
+  it('makes the book title the visual headline and opens the book from it', () => {
+    const book = createMockBook({ hash: 'desk', title: '夜航西飞', updatedAt: 5000 });
+    const { props } = renderHome([book]);
+    const desk = screen.getByRole('region', { name: '桌上这本' });
+
+    const heading = within(desk).getByRole('heading', { level: 2 });
+    const title = within(heading).getByRole('button', { name: '夜航西飞' });
+    expect(heading.className).toContain('text-[28px]');
+
+    fireEvent.click(title);
+    expect(props.onOpenBook).toHaveBeenCalledWith(book);
+  });
+
+  it('renders 继续阅读 as a solid 40px button, not a text link', () => {
+    renderHome([createMockBook({ hash: 'desk' })]);
+
+    const cta = screen.getByRole('button', { name: '继续阅读' });
+    expect(cta.className).toContain('bg-study-ink');
+    expect(cta.className).toContain('h-10');
+    expect(cta.className).not.toContain('underline');
+  });
+
+  it('shows each book once across the desk, the queue and the shelf', () => {
+    const books = Array.from({ length: 10 }, (_, index) =>
+      createMockBook({
+        hash: `book-${index}`,
+        title: `Book ${index}`,
+        updatedAt: 1000 + index,
+        progress: [1, 100],
+      }),
+    );
+
+    const { container } = renderHome(books);
+    const desk = screen.getByRole('region', { name: '桌上这本' });
+    const nextUp = screen.getByRole('region', { name: '接下来' });
+    const shelf = screen.getByRole('region', { name: '书架' });
+
+    const hashes = (element: HTMLElement) =>
+      [...element.querySelectorAll('[data-testid^="cover-"]')].map((cover) =>
+        cover.getAttribute('data-testid')!.replace('cover-', ''),
+      );
+
+    const deskHashes = hashes(desk);
+    const shelfHashes = hashes(shelf);
+
+    expect(deskHashes).toHaveLength(1);
+    expect(within(nextUp).getAllByRole('listitem')).toHaveLength(7);
+    // 10 books: one on the desk, seven queued, the remaining two on the shelf.
+    expect(shelfHashes).toHaveLength(2);
+    expect(shelfHashes).not.toContain(deskHashes[0]);
+    expect(container.querySelectorAll('[data-testid^="cover-"]')).toHaveLength(3);
   });
 
   it('lists at most seven upcoming books', () => {
@@ -103,7 +158,7 @@ describe('LibraryHome', () => {
     expect(props.onShowAll).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the shelf to twelve covers', () => {
+  it('keeps the shelf to the books the desk and queue do not already show', () => {
     const books = Array.from({ length: 14 }, (_, index) =>
       createMockBook({ hash: `book-${index}`, updatedAt: 1000 + index }),
     );
@@ -111,9 +166,18 @@ describe('LibraryHome', () => {
     const { container } = renderHome(books);
     const shelf = screen.getByRole('region', { name: '书架' });
 
-    // One cover on the desk plus twelve on the shelf.
-    expect(container.querySelectorAll('[data-testid^="cover-"]').length).toBe(13);
-    expect(within(shelf).getAllByRole('button')).toHaveLength(13); // 12 covers + the link
+    // 14 books: one on the desk, seven queued, six left for the shelf.
+    expect(container.querySelectorAll('[data-testid^="cover-"]').length).toBe(7);
+    expect(within(shelf).getAllByRole('button')).toHaveLength(7); // 6 covers + the link
+  });
+
+  it('puts the 全部 N 本 link at the end of the shelf row', () => {
+    renderHome([createMockBook({ hash: 'a' }), createMockBook({ hash: 'b' })]);
+
+    const shelf = screen.getByRole('region', { name: '书架' });
+    const buttons = within(shelf).getAllByRole('button');
+    expect(buttons.at(-1)!.textContent).toBe('全部 2 本 →');
+    expect(shelf.contains(buttons.at(-1)!)).toBe(true);
   });
 
   it('offers one sentence and a text button when the library is empty', () => {

@@ -23,7 +23,11 @@ import BookmarkToggler from './BookmarkToggler';
 import TranslationToggler from './TranslationToggler';
 import MangaTranslateToggler from './manga/MangaTranslateToggler';
 import { annotationToolQuickActions } from './annotator/AnnotationTools';
-import { ReaderToolsProvider, useNotebookToggle, useReaderToolsPanels } from '../hooks/useReaderTools';
+import {
+  ReaderToolsProvider,
+  useNotebookToggle,
+  useReaderToolsPanels,
+} from '../hooks/useReaderTools';
 
 /** Pointer distance from the top edge that reveals the toolbar. */
 export const CHROME_TRIGGER_HEIGHT = 64;
@@ -163,19 +167,24 @@ const ReaderChromeInner: React.FC<ReaderChromeProps> = ({
       <div
         role='presentation'
         aria-hidden='true'
-        className='reader-chrome-trigger pointer-events-auto absolute inset-x-0 top-0 h-16'
+        className='reader-chrome-trigger pointer-events-auto absolute inset-x-0 top-0 z-0 h-16'
         onMouseEnter={show}
         onTouchStart={show}
       />
+      {/* The trigger sits under the bar (z-0 vs z-10), so it can never take a
+          click aimed at a visible icon; the bar owns the pointer only while it
+          is on screen and passes through to the page text when hidden. */}
       <div
         ref={headerRef}
         role='toolbar'
         aria-label={_('Reader Chrome')}
         aria-hidden={!chromeVisible}
         className={clsx(
-          'reader-chrome-top hairline-b bg-study-canvas absolute inset-x-0 top-0 h-11',
+          'reader-chrome-top hairline-b bg-study-canvas absolute inset-x-0 top-0 z-10 h-11',
           'transition-opacity duration-[160ms] ease-study',
-          chromeVisible ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
+          chromeVisible
+            ? 'visible pointer-events-auto opacity-100'
+            : 'pointer-events-none invisible opacity-0',
         )}
         style={{
           paddingTop: gridInsets.top ? `${gridInsets.top}px` : undefined,
@@ -245,7 +254,6 @@ const ReaderChromeInner: React.FC<ReaderChromeProps> = ({
                 <div className='flex items-center gap-1 px-2 py-1'>
                   <BookmarkToggler bookKey={bookKey} />
                   <TranslationToggler bookKey={bookKey} />
-                  <MangaTranslateToggler bookKey={bookKey} view={view ?? null} />
                 </div>
                 {quickActionEnabled && (
                   <>
@@ -306,6 +314,12 @@ const ReaderChromeInner: React.FC<ReaderChromeProps> = ({
           </div>
         </div>
       </div>
+
+      {/* The manga translation surface belongs to the reading area, not the
+          toolbar: it portals its own cluster into the page cell. Mounting it
+          outside the dropdown means the cluster exists in the default reading
+          state instead of only while the `更多` menu happens to be open. */}
+      <MangaTranslateToggler bookKey={bookKey} view={view ?? null} />
 
       {/* Bottom edge: a 2px progress hairline pinned to the window, and a hover
           strip that reveals the footer bar. Neither participates in layout, so

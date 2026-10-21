@@ -47,12 +47,17 @@ export const selectNextUpBooks = (
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, count);
 
-/** The books on the low shelf, newest first. */
+/**
+ * The books on the low shelf, newest first. Books already on the desk or in
+ * the queue are left out: one book must not appear twice on the same screen.
+ */
 export const selectShelfBooks = (
   books: Book[],
   count = HOME_SHELF_BOOK_COUNT,
+  exclude: ReadonlySet<string> = new Set(),
 ): Book[] =>
   liveBooks(books)
+    .filter((book) => !exclude.has(book.hash))
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, count);
 
@@ -125,7 +130,11 @@ const LibraryHome: React.FC<LibraryHomeProps> = ({
     () => selectNextUpBooks(visible, nowReading?.hash),
     [visible, nowReading?.hash],
   );
-  const shelf = useMemo(() => selectShelfBooks(visible), [visible]);
+  const shelf = useMemo(() => {
+    const spokenFor = new Set(nextUp.map((book) => book.hash));
+    if (nowReading) spokenFor.add(nowReading.hash);
+    return selectShelfBooks(visible, HOME_SHELF_BOOK_COUNT, spokenFor);
+  }, [visible, nextUp, nowReading]);
 
   useEffect(() => {
     if (searchOpen) searchInputRef.current?.focus();
@@ -156,9 +165,10 @@ const LibraryHome: React.FC<LibraryHomeProps> = ({
     onSearch(term);
   };
 
-  const progressPercentage = nowReading ? (getProgressPercentage(nowReading) ?? 0) : 0;
+  const progressPercentage = nowReading ? getProgressPercentage(nowReading) : null;
   const remainingMinutes = nowReading ? getDisplayedTimeRemaining(nowReading) : undefined;
   const currentPage = nowReading?.progress?.[0];
+  const authorName = formatAuthors(nowReading?.author || nowReading?.metadata?.author || '');
 
   return (
     <div
@@ -170,7 +180,7 @@ const LibraryHome: React.FC<LibraryHomeProps> = ({
           stack instead of squeezing the desk. */}
       <div className='mx-auto flex min-h-full w-full max-w-[1264px] flex-col px-6 pb-16 pt-4 sm:px-[72px] sm:pt-6'>
         <header className='flex h-11 shrink-0 items-center justify-between gap-4'>
-          <h1 className='text-[15px] leading-[22px] font-medium'>书房</h1>
+          <h1 className='text-section'>书房</h1>
           <div className='flex items-center gap-2'>
             {searchOpen ? (
               <form onSubmit={submitSearch} className='relative flex h-10 items-center'>
@@ -230,46 +240,59 @@ const LibraryHome: React.FC<LibraryHomeProps> = ({
           </div>
         ) : (
           <>
-            <div className='mt-16 grid grid-cols-1 gap-16 lg:grid-cols-[62fr_38fr] lg:gap-10'>
+            <div className='mt-16 grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10'>
               <section aria-label='桌上这本' className='min-w-0'>
                 {nowReading ? (
-                  <>
+                  <div className='grid grid-cols-1 gap-8 sm:grid-cols-[240px_minmax(380px,400px)] sm:items-start'>
                     <StudyCover
                       book={nowReading}
                       onOpen={onOpenBook}
                       className='shadow-cover eink:shadow-none aspect-[28/41] w-[240px] max-w-full'
                     />
-                    <h2 className='mt-8 font-serif text-display text-balance break-words'>
-                      {nowReading.title}
-                    </h2>
-                    <p className='text-body text-study-ink/60 mt-2'>
-                      {formatAuthors(nowReading.author || nowReading.metadata?.author || '')}
-                    </p>
-                    <div
-                      className='bg-study-ink/10 mt-6 h-px w-[240px] max-w-full'
-                      role='presentation'
-                    >
-                      <div
-                        className='bg-study-ink/55 h-px'
-                        style={{ width: `${Math.min(100, Math.max(0, progressPercentage))}%` }}
-                      />
+                    <div className='min-w-0'>
+                      {/* The book is the page's real headline: it is larger
+                          than the `<h1>`, and clicking it opens the book. */}
+                      <h2 className='font-serif text-[28px] leading-[36px] font-medium text-balance break-words'>
+                        <button
+                          type='button'
+                          onClick={() => onOpenBook(nowReading)}
+                          className='text-start underline decoration-transparent underline-offset-4 transition-colors duration-200 ease-study hover:decoration-study-ink/30'
+                        >
+                          {nowReading.title}
+                        </button>
+                      </h2>
+                      {authorName && (
+                        <p className='text-body text-study-ink/60 mt-2'>{authorName}</p>
+                      )}
+                      {progressPercentage !== null && progressPercentage > 0 && (
+                        <>
+                          <div className='bg-study-ink/10 mt-6 h-px w-full' role='presentation'>
+                            <div
+                              className='bg-study-ink/55 h-px'
+                              style={{ width: `${Math.min(100, progressPercentage)}%` }}
+                            />
+                          </div>
+                          <p className='text-meta text-study-ink/55 mt-3 tabular-nums'>
+                            {[
+                              currentPage ? `第 ${currentPage} 页` : null,
+                              remainingMinutes
+                                ? `还剩 ${formatRemaining(remainingMinutes, _)}`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </p>
+                        </>
+                      )}
+                      <button
+                        type='button'
+                        onClick={() => onOpenBook(nowReading)}
+                        className='mt-6 inline-flex h-10 items-center rounded-control bg-study-ink px-5 text-body font-medium text-study-page transition-opacity duration-200 ease-study hover:opacity-90'
+                      >
+                        继续阅读
+                      </button>
                     </div>
-                    <p className='text-meta text-study-ink/55 mt-3 tabular-nums'>
-                      {[
-                        currentPage ? `第 ${currentPage} 页` : null,
-                        remainingMinutes ? `还剩 ${formatRemaining(remainingMinutes, _)}` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </p>
-                    <button
-                      type='button'
-                      onClick={() => onOpenBook(nowReading)}
-                      className='text-body mt-5 inline-block underline decoration-study-ink/30 underline-offset-4 transition-colors duration-200 ease-study hover:decoration-study-ink'
-                    >
-                      继续阅读
-                    </button>
-                  </>
+                  </div>
                 ) : (
                   <p className='text-body text-study-ink/60'>挑一本书，从第一页开始。</p>
                 )}
