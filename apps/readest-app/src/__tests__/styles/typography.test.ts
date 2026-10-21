@@ -46,7 +46,7 @@ describe('type scale tokens', () => {
 
     for (const file of files) {
       const source = read(file);
-      for (const size of ['text-[8px]', 'text-[9px]', 'text-[10px]', 'text-[11px]', 'text-[12.5px]', 'text-[13px]']) {
+      for (const size of ['text-[8px]', 'text-[9px]', 'text-[10px]', 'text-[11px]', 'text-[12.5px]', 'text-[13px]', 'text-[0.9em]', 'text-[0.85em]', 'text-[0.78em]', 'text-[0.8em]']) {
         expect(source, `${file} still uses ${size}`).not.toContain(size);
       }
     }
