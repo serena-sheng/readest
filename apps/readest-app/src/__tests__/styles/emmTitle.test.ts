@@ -38,8 +38,11 @@ describe('emm theme header title', () => {
   });
 
   it('keeps the SectionInfo imprint styling', () => {
+    // The imprint stays, but at the caption step and without the uppercase
+    // tracking that CJK text cannot use.
     expect(globals).toMatch(
-      /html\[data-theme\^='emm'\] \.sectioninfo[^{]*\{[^}]*text-transform:\s*uppercase/,
+      /html\[data-theme\^='emm'\] \.sectioninfo[^{]*\{[^}]*font-size:\s*var\(--text-caption\)/,
     );
+    expect(globals).not.toMatch(/\.sectioninfo[^{]*\{[^}]*text-transform:\s*uppercase/);
   });
 });

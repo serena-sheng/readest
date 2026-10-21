@@ -1722,10 +1722,12 @@ html[data-theme^='emm'] .header-bar .btn:hover {
    parent's inline font-size/colour (a directly-specified value always beats
    an inherited one), giving the label the same imprint as the header line. */
 html[data-theme^='emm'] .sectioninfo:not(.writing-vertical-rl) > span {
-  font-size: 11px;
+  /* The imprint is Chinese in most books: no uppercase, no tracking, and never
+     below the 12px floor the rest of the chrome follows. */
+  font-size: var(--text-caption);
+  line-height: 17px;
   font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
 }
 

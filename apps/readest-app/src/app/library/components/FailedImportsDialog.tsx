@@ -40,7 +40,7 @@ const FailedImportsDialog: React.FC<FailedImportsDialogProps> = ({ failedImports
           )}
         >
           <MdErrorOutline className='text-error h-5 w-5 shrink-0' aria-hidden='true' />
-          <p className='text-[13px] leading-snug'>{subtitle}</p>
+          <p className='text-meta leading-snug'>{subtitle}</p>
         </div>
 
         <ul

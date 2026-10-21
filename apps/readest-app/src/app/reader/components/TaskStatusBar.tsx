@@ -121,7 +121,7 @@ const TaskStatusBar: React.FC<TaskStatusBarProps> = ({
     <div
       role={isError ? 'alert' : 'status'}
       {...{ [statusAttribute]: status.kind }}
-      className='pointer-events-auto absolute left-1/2 z-[9] flex h-9 max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-[10px] px-3 text-body'
+      className='pointer-events-auto absolute inset-x-0 z-[9] mx-auto flex w-fit min-h-9 max-w-[calc(100vw-2rem)] items-center gap-3 rounded-[10px] px-3 py-1.5 text-body'
       style={{
         bottom: '56px',
         backgroundColor: 'color-mix(in srgb, var(--color-base-100) 92%, transparent)',
@@ -129,12 +129,12 @@ const TaskStatusBar: React.FC<TaskStatusBarProps> = ({
         boxShadow: '0 8px 24px rgba(0,0,0,.12)',
       }}
     >
-      <span className='text-base-content min-w-0 flex-1 truncate'>
-        {message}
-      </span>
-      {status.kind === 'error' && status.detail && (
-        <span className='text-base-content/60 shrink-0 text-xs'>{status.detail}</span>
-      )}
+      <div className='flex min-w-0 flex-1 flex-col'>
+        <span className='text-base-content truncate'>{message}</span>
+        {status.kind === 'error' && status.detail && (
+          <span className='text-caption text-base-content/60 truncate'>{status.detail}</span>
+        )}
+      </div>
       {status.kind === 'progress' && onStop && (
         <button className='link link-hover shrink-0 text-sm font-medium' onClick={onStop}>
           {_('停止')}
