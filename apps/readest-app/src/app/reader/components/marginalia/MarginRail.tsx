@@ -9,7 +9,13 @@ import MarginNoteItem, { MARGIN_NOTE_HEIGHT } from './MarginNoteItem';
 /** Below this width the 72px gutter cannot exist beside the measure. */
 export const NARROW_BREAKPOINT = 1200;
 /** Width of the annotation gutter at the right of the reading measure. */
-export const RAIL_WIDTH = 72;
+export const RAIL_WIDTH_WIDE = 72;
+/** A 13" window keeps a 56px column: still three characters per line. */
+export const RAIL_WIDTH_COMPACT = 56;
+export const COMPACT_BREAKPOINT = 1400;
+export const RAIL_WIDTH = RAIL_WIDTH_WIDE;
+export const railWidthFor = (viewportWidth: number): number =>
+  viewportWidth >= COMPACT_BREAKPOINT ? RAIL_WIDTH_WIDE : RAIL_WIDTH_COMPACT;
 /** Length of the hairline that ties a note to its paragraph. */
 export const LEAD_LENGTH = 24;
 /** Breathing room between a note pushed down and the paragraph above it. */
@@ -126,9 +132,11 @@ const MarginRail: React.FC<MarginRailProps> = ({
 
   const railRef = useRef<HTMLDivElement | null>(null);
   const [tick, setTick] = useState(0);
-  const [viewportNarrow, setViewportNarrow] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth < NARROW_BREAKPOINT,
+  const [viewportWidth, setViewportWidth] = useState(
+    () => (typeof window !== 'undefined' ? window.innerWidth : NARROW_BREAKPOINT),
   );
+  const viewportNarrow = viewportWidth < NARROW_BREAKPOINT;
+  const railWidth = railWidthFor(viewportWidth);
   const [openNoteId, setOpenNoteId] = useState<string | null>(null);
   const [openBadge, setOpenBadge] = useState<string | null>(null);
 
@@ -159,7 +167,7 @@ const MarginRail: React.FC<MarginRailProps> = ({
   }, [bookKey]);
 
   useEffect(() => {
-    const onResize = () => setViewportNarrow(window.innerWidth < NARROW_BREAKPOINT);
+    const onResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -269,9 +277,9 @@ const MarginRail: React.FC<MarginRailProps> = ({
       style={{
         top: 0,
         bottom: 0,
-        width: RAIL_WIDTH,
+        width: railWidth,
         [isRtl ? 'left' : 'right']: `calc((100% - var(--reader-measure)) / 2 - ${
-          RAIL_WIDTH + LEAD_LENGTH
+          railWidth + LEAD_LENGTH
         }px)`,
       }}
     >
@@ -281,7 +289,7 @@ const MarginRail: React.FC<MarginRailProps> = ({
           className='pointer-events-auto absolute'
           data-testid='margin-note-anchor'
           data-top={top}
-          style={{ top: 0, transform: `translateY(${top}px)`, width: RAIL_WIDTH }}
+          style={{ top: 0, transform: `translateY(${top}px)`, width: railWidth }}
         >
           <span
             aria-hidden='true'
