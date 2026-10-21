@@ -250,6 +250,8 @@ export interface UseMangaTranslationResult {
   stop: () => void;
   /** Re-run the last page request after a failure. */
   retry: () => Promise<void>;
+  /** Ask the model again for the current page, ignoring both caches. */
+  retranslate: () => Promise<void>;
   /** Clear the inline status (used by the empty notice's own timer). */
   dismissStatus: () => void;
   /** Dismiss the missing-model guide without changing any mode. */
@@ -293,6 +295,7 @@ export function useMangaTranslation(
     image: HTMLImageElement;
     mode: MangaTranslationMode;
     persist: boolean;
+    force: boolean;
   } | null>(null);
   const onNarrowFallbackRef = useRef(options.onNarrowFallback);
   onNarrowFallbackRef.current = options.onNarrowFallback;
@@ -463,7 +466,7 @@ export function useMangaTranslation(
     async (
       image: HTMLImageElement,
       desiredMode: MangaTranslationMode,
-      requestOptions: { persist?: boolean } = {},
+      requestOptions: { persist?: boolean; force?: boolean } = {},
     ) => {
       if (loadingRef.current) return;
 
@@ -472,10 +475,12 @@ export function useMangaTranslation(
         fallBackToBubble(fit);
         desiredMode = 'bubble';
       }
+      const force = requestOptions.force ?? false;
       lastRequestRef.current = {
         image,
         mode: desiredMode,
         persist: requestOptions.persist ?? false,
+        force,
       };
 
       const src = image.currentSrc || image.src;
@@ -486,7 +491,7 @@ export function useMangaTranslation(
         return;
       }
 
-      const inMemory = src ? cacheRef.current.get(src) : undefined;
+      const inMemory = !force && src ? cacheRef.current.get(src) : undefined;
       if (inMemory) {
         setStatus(null);
         setImageEl(image);
@@ -515,7 +520,7 @@ export function useMangaTranslation(
           targetLang,
           glossaryRevision(glossary),
         );
-        const cached = await getMangaPage(cacheKey);
+        const cached = force ? null : await getMangaPage(cacheKey);
         if (controller.signal.aborted) return;
         if (cached) {
           cacheRef.current.set(prepared.src, cached);
@@ -543,6 +548,8 @@ export function useMangaTranslation(
         });
         if (controller.signal.aborted) return;
 
+        // A forced request replaces the old entry so paging back shows the
+        // result the reader just asked for.
         cacheRef.current.set(prepared.src, page);
         setImageEl(image);
         setResult(page);
@@ -737,8 +744,19 @@ export function useMangaTranslation(
     const last = lastRequestRef.current;
     setStatus(null);
     if (!last) return;
-    await translatePage(last.image, last.mode, { persist: last.persist });
+    await translatePage(last.image, last.mode, { persist: last.persist, force: last.force });
   }, [translatePage]);
+
+  /**
+   * The reader asked for a fresh look at this page. Both the session cache and
+   * the persistent one are skipped; the new result overwrites the old entry.
+   */
+  const retranslate = useCallback(async () => {
+    const image = pickPageImage(view);
+    if (!image) return;
+    const next = modeRef.current === 'off' ? lastModeRef.current : modeRef.current;
+    await translatePage(image, next, { persist: true, force: true });
+  }, [translatePage, view]);
 
   // Shift+I is resolved by useBookShortcuts and scoped to the active book.
   useEffect(() => {
@@ -779,6 +797,7 @@ export function useMangaTranslation(
     setMode,
     stop,
     retry,
+    retranslate,
     dismissStatus,
     dismissModelSetup,
   };

@@ -101,6 +101,8 @@ import DictionarySheet from './DictionarySheet';
 import NoteEditorSheet from './NoteEditorSheet';
 import TranslatorPopup from './TranslatorPopup';
 import SelectionActions from './SelectionActions';
+import { dictionaryToMargin, translateToMargin } from '../marginalia/anchorTranslate';
+import { add as addMarginNote, isMarginRailAvailable } from '@/services/marginalia/store';
 import AskLocalPanel from '../AskLocalPanel';
 import useShortcuts from '@/hooks/useShortcuts';
 import ProofreadPopup from './ProofreadPopup';
@@ -1900,6 +1902,20 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
   const handleSaveNote = async (note: string) => {
     if (!noteEditorTarget) return;
     if (!(await saveBooknoteNoteText(noteEditorTarget.annotationId, note))) return;
+    // The note is also a reading trace: it belongs in the margin beside the
+    // paragraph it was written about, not only in the notebook.
+    const annotation = getConfig(bookKey)?.booknotes?.find(
+      (candidate) => candidate.id === noteEditorTarget.annotationId,
+    );
+    if (annotation?.cfi && note.trim()) {
+      addMarginNote(bookKey, {
+        id: annotation.id,
+        anchorCfi: annotation.cfi,
+        kind: 'note',
+        text: note.trim(),
+        at: Date.now(),
+      });
+    }
     // The placeholder carries a note now — a real annotation, not a leftover.
     pendingNotePlaceholdersRef.current = [];
     setNoteEditorTarget(null);
@@ -1947,6 +1963,33 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
       handleDismissPopupAndSelection();
       return;
     }
+    // Wide layouts have a margin rail: the gloss is left beside the paragraph
+    // instead of covering it. Without a usable anchor the popup still wins.
+    const marginAnchor = selection.cfi || view?.lastLocation?.cfi;
+    if (isMarginRailAvailable() && marginAnchor) {
+      const word = selection.text;
+      const dictState = useCustomDictionaryStore.getState();
+      setShowAnnotPopup(false);
+      void dictionaryToMargin({
+        bookKey,
+        anchorCfi: marginAnchor,
+        word,
+        lang: bookData.bookDoc?.metadata.language,
+        dictionaries: dictState.dictionaries,
+        settings: dictState.settings,
+        fs: appService,
+      }).then((note) => {
+        if (note) {
+          handleDismissPopupAndSelection();
+          return;
+        }
+        // No definition was available; the lookup surface still has the
+        // suggestions, search links and error states the margin cannot show.
+        void suppressNativeSelectionHandles();
+        setShowDictionaryPopup(true);
+      });
+      return;
+    }
     setShowAnnotPopup(false);
     void suppressNativeSelectionHandles();
     setShowDictionaryPopup(true);
@@ -1954,6 +1997,31 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
 
   const handleTranslation = () => {
     if (!selection || !selection.text) return;
+    const marginAnchor = selection.cfi || view?.lastLocation?.cfi;
+    if (isMarginRailAvailable() && marginAnchor) {
+      const text = selection.text;
+      setShowAnnotPopup(false);
+      void suppressNativeSelectionHandles();
+      handleDismissPopupAndSelection();
+      void translateToMargin({
+        bookKey,
+        anchorCfi: marginAnchor,
+        text,
+        provider: settings.globalReadSettings.translationProvider,
+        sourceLang: getViewSettings(bookKey)?.translateSourceLang ?? 'AUTO',
+        targetLang: settings.globalReadSettings.translateTargetLang,
+        promptId: getViewSettings(bookKey)?.translationPromptId,
+        bookTitle: bookData.book?.title,
+        bookAuthor: bookData.book?.author,
+      }).catch((error) => {
+        console.error(error);
+        eventDispatcher.dispatch('toast', {
+          type: 'error',
+          message: _('Unable to fetch the translation. Try again later.'),
+        });
+      });
+      return;
+    }
     setShowAnnotPopup(false);
     void suppressNativeSelectionHandles();
     setShowDeepLPopup(true);

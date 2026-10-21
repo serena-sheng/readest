@@ -1,20 +1,15 @@
 import '../../setupMemoryStorage';
 
 import React from 'react';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { MangaTranslationMode } from '@/app/reader/hooks/useMangaTranslation';
 import MangaTranslateToggler from '@/app/reader/components/manga/MangaTranslateToggler';
+import { MANGA_CONTROL_EDGE } from '@/app/reader/components/manga/MangaControlCluster';
 
 const h = vi.hoisted(() => ({
   state: {} as Record<string, unknown>,
-  toggle: vi.fn(),
-  setMode: vi.fn(),
-  stop: vi.fn(),
-  retry: vi.fn(),
-  dismissStatus: vi.fn(),
-  dismissModelSetup: vi.fn(),
 }));
 
 vi.mock('@/app/reader/hooks/useMangaTranslation', () => ({
@@ -52,80 +47,67 @@ const baseState = (mode: MangaTranslationMode) => ({
   status: null,
   danmakuDisabledReason: null,
   needsModelSetup: false,
-  toggle: h.toggle,
-  setMode: h.setMode,
-  stop: h.stop,
-  retry: h.retry,
-  dismissStatus: h.dismissStatus,
-  dismissModelSetup: h.dismissModelSetup,
-});
-
-const trigger = () =>
-  screen.getByRole('button', { name: /翻译这一页的漫画文字|漫画翻译：|本页没有可翻译的图片/ });
-
-const triggerRect = (left: number, right: number, bottom: number) => ({
-  x: left,
-  y: bottom - 32,
-  left,
-  right,
-  top: bottom - 32,
-  bottom,
-  width: right - left,
-  height: 32,
-  toJSON: () => ({}),
+  toggle: vi.fn(),
+  setMode: vi.fn(),
+  stop: vi.fn(),
+  retry: vi.fn(),
+  retranslate: vi.fn(),
+  dismissStatus: vi.fn(),
+  dismissModelSetup: vi.fn(),
+  fitPage: vi.fn(),
 });
 
 beforeEach(() => {
+  window.localStorage.clear();
   h.state = baseState('off');
-  h.toggle.mockReset();
-  h.setMode.mockReset();
+  const host = document.createElement('div');
+  host.id = 'gridcell-book-1';
+  document.body.appendChild(host);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  document.getElementById('gridcell-book-1')?.remove();
+});
 
-describe('MangaTranslateToggler menu portal', () => {
-  it('renders the menu under document.body so the header scroller cannot clip it', () => {
+describe('MangaTranslateToggler page-level cluster', () => {
+  it('renders the cluster inside the reading area, not in the header slot', () => {
     const { container } = render(
       React.createElement(MangaTranslateToggler, { bookKey: 'book-1', view: null }),
     );
 
-    fireEvent.click(trigger());
-
-    const menu = screen.getByRole('menu');
-    expect(menu.parentElement).toBe(document.body);
-    expect(container.contains(menu)).toBe(false);
-    expect(menu.className).toContain('fixed');
+    const host = document.getElementById('gridcell-book-1')!;
+    const cluster = screen.getByTestId('manga-control-cluster');
+    expect(host.contains(cluster)).toBe(true);
+    expect(container.contains(cluster)).toBe(false);
+    expect(container.childElementCount).toBe(0);
   });
 
-  it('places the menu 6px below the trigger and clamps it inside the viewport', () => {
+  it('pins the cluster 24px from the reading area bottom-right corner', () => {
     render(React.createElement(MangaTranslateToggler, { bookKey: 'book-1', view: null }));
 
-    const button = trigger();
-    button.getBoundingClientRect = () => triggerRect(900, 932, 42) as DOMRect;
-    fireEvent.click(button);
-
-    const menu = screen.getByRole('menu');
-    // 932 - 248 = 684: right-aligned because 900 + 248 overflows 1024 - 16.
-    expect(menu.style.left).toBe('684px');
-    expect(menu.style.top).toBe('48px');
-
-    fireEvent.click(button);
-    button.getBoundingClientRect = () => triggerRect(4, 36, 42) as DOMRect;
-    fireEvent.click(button);
-    expect(screen.getByRole('menu').style.left).toBe('16px');
+    const cluster = screen.getByTestId('manga-control-cluster');
+    expect(cluster.style.bottom).toBe(`${MANGA_CONTROL_EDGE}px`);
+    expect(cluster.style.right).toBe(`${MANGA_CONTROL_EDGE}px`);
+    expect(cluster.className).toContain('absolute');
   });
 
-  it('switches translation from the first row of the portalled menu', () => {
+  it('keeps the cluster after a manga page was seen, even on an image-less page', () => {
+    const { rerender } = render(
+      React.createElement(MangaTranslateToggler, { bookKey: 'book-1', view: null }),
+    );
+    expect(screen.queryByTestId('manga-control-cluster')).not.toBeNull();
+
+    h.state = { ...baseState('off'), available: false };
+    rerender(React.createElement(MangaTranslateToggler, { bookKey: 'book-1', view: null }));
+
+    expect(screen.queryByTestId('manga-control-cluster')).not.toBeNull();
+  });
+
+  it('renders nothing before a manga page has ever been seen', () => {
+    h.state = { ...baseState('off'), available: false };
     render(React.createElement(MangaTranslateToggler, { bookKey: 'book-1', view: null }));
 
-    fireEvent.click(trigger());
-    const menu = screen.getByRole('menu');
-    const firstRow = within(menu).getAllByRole('menuitem')[0]!;
-
-    expect(firstRow.getAttribute('aria-label')).toBe('开启漫画翻译 - OFF');
-    fireEvent.click(firstRow);
-
-    expect(h.toggle).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.queryByTestId('manga-control-cluster')).toBeNull();
   });
 });

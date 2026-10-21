@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import type { MangaPageResult } from '@/services/manga/types';
@@ -14,9 +14,11 @@ export const MANGA_CHIP_BADGE_CLASS = 'manga-danmaku-chip-badge';
 export const MANGA_CHIP_BODY_CLASS = 'manga-danmaku-chip-body';
 export const MANGA_SCROLL_HINT_CLASS = 'manga-danmaku-scroll-hint';
 const BUBBLE_CLASS = 'manga-bubble-text';
-const BUBBLE_PADDING = 2;
-const MIN_FONT_SIZE = 12;
-const LINE_HEIGHT = 1.5;
+const BUBBLE_PADDING_X = 6;
+const BUBBLE_PADDING_Y = 3;
+/** The translation may shrink, but it must stay readable. */
+export const MANGA_BUBBLE_MIN_FONT_SIZE = 11;
+const LINE_HEIGHT = 1.4;
 
 // Danmaku gutters: the gutter takes a fifth of the container, bounded by these
 // limits, and the page image must keep at least MIN_DANMAKU_IMAGE_WIDTH.
@@ -24,10 +26,15 @@ const GUTTER_RATIO = 0.2;
 const GUTTER_MIN_WIDTH = 150;
 const GUTTER_MAX_WIDTH = 300;
 const MIN_DANMAKU_IMAGE_WIDTH = 120;
-const DANMAKU_FONT_SIZE = 15;
+export const MANGA_PILL_FONT_SIZE = 15;
+export const MANGA_PILL_LARGE_FONT_SIZE = 16;
+export const MANGA_PILL_LINE_HEIGHT = 26;
+const DANMAKU_FONT_SIZE = MANGA_PILL_FONT_SIZE;
 const NARROW_DANMAKU_FONT_SIZE = 13;
 const NARROW_GUTTER_WIDTH = 90;
-const DANMAKU_LINE_HEIGHT = 1.75;
+/** Reading areas at least this wide get one type step larger. */
+export const MANGA_WIDE_LAYOUT_MIN_WIDTH = 1400;
+export const isMangaWideLayout = (width: number): boolean => width >= MANGA_WIDE_LAYOUT_MIN_WIDTH;
 const DANMAKU_GAP = 6;
 /** Air between a chip's artwork-facing edge and the page image. */
 const CHIP_IMAGE_GAP = 8;
@@ -35,14 +42,18 @@ const CHIP_PADDING_X = 6;
 const CHIP_PADDING_Y = 3;
 /** Width of the rule that marks a translation as marginalia. */
 const CHIP_RULE_WIDTH = 2;
-/** Translation chips read as marginalia: bare text, no card behind it. */
-const CHIP_TRANSLATION_BACKGROUND = 'transparent';
-/** E-ink cannot composite translucency, so its chips keep an opaque fill. */
-const CHIP_EINK_BACKGROUND = 'rgba(255, 255, 255, 0.9)';
+/** The pill is a paper note, not a translucent card on the artwork. */
+const CHIP_PAPER_BACKGROUND = '#EDE6D8';
+const CHIP_PAPER_DARK_BACKGROUND = '#2A2620';
 /** Wrap width past which a marginal note stops being a note. */
 const CHIP_MAX_TEXT_WIDTH = 'min(22em, 100%)';
 const UI_FONT_STACK =
   'system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif';
+/** Marginalia follow the book's own voice: they are annotations, not chrome. */
+const SERIF_FONT_STACK =
+  'Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif';
+/** Both surfaces enter with the same quiet fade: opacity only, no movement. */
+export const MANGA_FADE_IN_MS = 120;
 const SCROLL_HINT_HEIGHT = 22;
 const SCROLL_HINT_THRESHOLD = 6;
 /** Chip state: the translation, or the bubble's original text. */
@@ -168,7 +179,7 @@ export const estimateMangaDanmakuChipHeight = (
   const innerWidth = Math.max(1, gutterWidth - CHIP_PADDING_X * 2 - CHIP_RULE_WIDTH);
   const charsPerLine = Math.max(1, Math.floor(innerWidth / fontSize));
   const lines = Math.max(1, Math.ceil(Array.from(text).length / charsPerLine));
-  return lines * fontSize * DANMAKU_LINE_HEIGHT + CHIP_PADDING_Y * 2;
+  return lines * MANGA_PILL_LINE_HEIGHT + CHIP_PADDING_Y * 2;
 };
 
 interface OverlayFrame {
@@ -199,9 +210,9 @@ export const computeMangaBubbleFontSize = ({
   text: string;
   vertical: boolean;
 }): number => {
-  const innerWidth = Math.max(1, width - BUBBLE_PADDING * 2);
-  const innerHeight = Math.max(1, height - BUBBLE_PADDING * 2);
-  if (innerWidth <= 1 || innerHeight <= 1) return MIN_FONT_SIZE;
+  const innerWidth = Math.max(1, width - BUBBLE_PADDING_X * 2);
+  const innerHeight = Math.max(1, height - BUBBLE_PADDING_Y * 2);
+  if (innerWidth <= 1 || innerHeight <= 1) return MANGA_BUBBLE_MIN_FONT_SIZE;
 
   const chars = Math.max(1, Array.from(text).length);
   // Start at the short side; the fit loop below shrinks from there.
@@ -209,13 +220,41 @@ export const computeMangaBubbleFontSize = ({
   const lineExtent = vertical ? innerHeight : innerWidth;
   const crossExtent = vertical ? innerWidth : innerHeight;
 
-  while (size > MIN_FONT_SIZE) {
+  while (size > MANGA_BUBBLE_MIN_FONT_SIZE) {
     const charsPerLine = Math.max(1, Math.floor(lineExtent / size));
     const lines = Math.ceil(chars / charsPerLine);
     if (lines * size * LINE_HEIGHT <= crossExtent) break;
     size -= 1;
   }
-  return Math.max(MIN_FONT_SIZE, size);
+  return Math.max(MANGA_BUBBLE_MIN_FONT_SIZE, size);
+};
+
+interface MangaBubbleTextProps {
+  style: React.CSSProperties;
+  title: string;
+  children: React.ReactNode;
+}
+
+/** One painted bubble. It fades in once; layout is never animated. */
+const MangaBubbleText: React.FC<MangaBubbleTextProps> = ({ style, title, children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof node.animate !== 'function') return;
+    const view = node.ownerDocument.defaultView;
+    if (view?.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    node.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: MANGA_FADE_IN_MS,
+      easing: 'ease-out',
+    });
+  }, []);
+
+  return (
+    <div ref={ref} className={BUBBLE_CLASS} title={title} style={style}>
+      {children}
+    </div>
+  );
 };
 
 const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bubble' }) => {
@@ -413,7 +452,10 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       view.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const mid = naturalWidth / 2;
-    const translationBackground = isEink ? CHIP_EINK_BACKGROUND : CHIP_TRANSLATION_BACKGROUND;
+    // E-ink cannot composite translucency, so it always gets the opaque paper
+    // tone rather than the dark theme's paper.
+    const translationBackground =
+      isDarkMode && !isEink ? CHIP_PAPER_DARK_BACKGROUND : CHIP_PAPER_BACKGROUND;
     const items = result.bubbles.map((bubble) => {
       const [x1, y1, x2, y2] = bubble.box;
       const side: DanmakuSide = (x1 + x2) / 2 < mid ? 'left' : 'right';
@@ -429,8 +471,8 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       chip.style.width = 'max-content';
       chip.style.maxWidth = CHIP_MAX_TEXT_WIDTH;
       chip.style.fontSize = `${DANMAKU_FONT_SIZE}px`;
-      chip.style.lineHeight = `${DANMAKU_LINE_HEIGHT}`;
-      chip.style.fontFamily = UI_FONT_STACK;
+      chip.style.lineHeight = `${MANGA_PILL_LINE_HEIGHT}px`;
+      chip.style.fontFamily = SERIF_FONT_STACK;
       chip.style.setProperty('text-wrap', 'pretty');
       // A translation is a note in the margin, not a card on the artwork: the
       // text sits directly on the stage and only a rule separates it from the
@@ -510,14 +552,11 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
       gutters[side].appendChild(chip);
 
       if (!reducedMotion && typeof chip.animate === 'function') {
-        const offset = side === 'left' ? -14 : 14;
-        chip.animate(
-          [
-            { opacity: 0, transform: `translateX(${offset}px)` },
-            { opacity: 1, transform: 'translateX(0)' },
-          ],
-          { duration: 180, easing: 'ease-out' },
-        );
+        // Only opacity: the note fades onto the page, it never slides into it.
+        chip.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: MANGA_FADE_IN_MS,
+          easing: 'ease-out',
+        });
       }
       return { el: chip, side, anchor: (y1 + y2) / 2, text: bubble.dst };
     });
@@ -593,7 +632,11 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
 
       const renderedHeight = Math.max(0, geometry.imageHeight);
       const narrowGutter = gutterWidth < NARROW_GUTTER_WIDTH;
-      const chipFontSize = narrowGutter ? NARROW_DANMAKU_FONT_SIZE : DANMAKU_FONT_SIZE;
+      const chipFontSize = narrowGutter
+        ? NARROW_DANMAKU_FONT_SIZE
+        : isMangaWideLayout(view?.innerWidth ?? 0)
+          ? MANGA_PILL_LARGE_FONT_SIZE
+          : DANMAKU_FONT_SIZE;
       const imageRight = geometry.imageLeft + geometry.imageWidth;
       // Each column ends exactly on the image edge and grows outwards, so a
       // pill 8px from that edge always lands 8px from the artwork.
@@ -724,17 +767,21 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
         const top = (frame?.offsetY ?? 0) + y1 * scaleY;
         const width = Math.max(1, (x2 - x1) * scaleX);
         const height = Math.max(1, (y2 - y1) * scaleY);
-        const fontSize = computeMangaBubbleFontSize({
+        const fitted = computeMangaBubbleFontSize({
           width,
           height,
           text: bubble.dst,
           vertical: bubble.vertical,
         });
+        // A wide reading area gets one step more type; the fit floor still wins
+        // for a tiny bubble.
+        const fontSize = isMangaWideLayout(imageEl.ownerDocument.defaultView?.innerWidth ?? 0)
+          ? fitted + 1
+          : fitted;
 
         return (
-          <div
+          <MangaBubbleText
             key={`${index}-${x1}-${y1}`}
-            className={BUBBLE_CLASS}
             title={bubble.src}
             style={{
               position: 'absolute',
@@ -746,7 +793,7 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
               alignItems: 'center',
               justifyContent: 'center',
               boxSizing: 'border-box',
-              padding: `${BUBBLE_PADDING}px`,
+              padding: `${BUBBLE_PADDING_Y}px ${BUBBLE_PADDING_X}px`,
               background: isDarkMode ? 'rgba(17, 17, 17, 0.92)' : 'rgba(255, 255, 255, 0.96)',
               color: isDarkMode ? '#f5f5f5' : '#111111',
               borderRadius: '3px',
@@ -762,7 +809,7 @@ const MangaOverlay: React.FC<MangaOverlayProps> = ({ imageEl, result, mode = 'bu
             }}
           >
             {bubble.dst}
-          </div>
+          </MangaBubbleText>
         );
       })}
     </>,

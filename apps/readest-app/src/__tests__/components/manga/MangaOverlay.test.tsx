@@ -1,6 +1,5 @@
 import '../../setupMemoryStorage';
 
-import React from 'react';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -140,8 +139,57 @@ describe('MangaOverlay', () => {
     const bubble = await screen.findByText('译文');
     expect(bubble.getAttribute('style')).toContain('rgba(255, 255, 255, 0.96)');
     expect(bubble.style.fontFamily).toContain('PingFang SC');
-    // Bubble mode keeps its tighter 1.5 leading; only the margin chips relax it.
-    expect(bubble.style.lineHeight).toBe('1.5');
+    expect(bubble.style.lineHeight).toBe('1.4');
+    // The translation hugs its text: 3px top/bottom, 6px sides.
+    expect(bubble.style.padding).toBe('3px 6px');
+  });
+
+  it('raises the bubble type by one step in a wide reading area', async () => {
+    Object.defineProperty(window, 'innerWidth', { value: 1600, configurable: true, writable: true });
+
+    try {
+      render(
+        <MangaOverlay
+          imageEl={image}
+          result={resultWith([
+            { box: [100, 200, 300, 400], src: '原文', dst: '译文', vertical: false },
+          ])}
+        />,
+      );
+
+      const bubble = await screen.findByText('译文');
+      // The 50×50 box fits 19px; the wide step makes it 20.
+      expect(bubble.style.fontSize).toBe('20px');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true, writable: true });
+    }
+  });
+
+  it('fades bubbles in with opacity only, at 120ms', async () => {
+    const animate = vi.fn(() => ({ cancel: vi.fn() }));
+    const proto = HTMLElement.prototype as unknown as { animate?: unknown };
+    const original = proto.animate;
+    proto.animate = animate;
+
+    try {
+      render(
+        <MangaOverlay
+          imageEl={image}
+          result={resultWith([
+            { box: [100, 200, 300, 400], src: '原文', dst: '译文', vertical: false },
+          ])}
+        />,
+      );
+      await screen.findByText('译文');
+    } finally {
+      if (original === undefined) delete proto.animate;
+      else proto.animate = original;
+    }
+
+    expect(animate).toHaveBeenCalledTimes(1);
+    const call = animate.mock.calls[0] as unknown as [Keyframe[], KeyframeAnimationOptions];
+    expect(call[0]).toEqual([{ opacity: 0 }, { opacity: 1 }]);
+    expect(call[1].duration).toBe(120);
   });
 
   it('renders no layer when there are no bubbles', () => {
@@ -151,7 +199,7 @@ describe('MangaOverlay', () => {
     expect(container.querySelectorAll('.manga-bubble-text')).toHaveLength(0);
   });
 
-  it('clamps the font size at 12px for a tiny box', async () => {
+  it('clamps the font size at 11px for a tiny box', async () => {
     render(
       <MangaOverlay
         imageEl={image}
@@ -167,7 +215,7 @@ describe('MangaOverlay', () => {
     );
 
     const bubble = await screen.findByText('这是一段很长的译文需要缩小到最小字号');
-    await waitFor(() => expect(bubble.style.fontSize).toBe('12px'));
-    expect(bubble.style.lineHeight).toBe('1.5');
+    await waitFor(() => expect(bubble.style.fontSize).toBe('11px'));
+    expect(bubble.style.lineHeight).toBe('1.4');
   });
 });

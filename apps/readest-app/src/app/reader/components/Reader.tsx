@@ -31,6 +31,7 @@ import { Toast } from '@/components/Toast';
 import { getLocale } from '@/utils/misc';
 import { initDayjs } from '@/utils/time';
 import ReaderContent from './ReaderContent';
+import MarginRail from './marginalia/MarginRail';
 
 /*
 Z-Index Layering Guide:
@@ -60,6 +61,7 @@ const Reader: React.FC<{ ids?: string }> = ({ ids }) => {
   const { libraryLoaded } = useLibrary();
   const { sideBarBookKey } = useSidebarStore();
   const { hoveredBookKey } = useReaderStore();
+  const bookKeys = useReaderStore((state) => state.bookKeys);
   const { showSystemUI, dismissSystemUI } = useThemeStore();
   const { acquireBackKeyInterception, releaseBackKeyInterception } = useDeviceControlStore();
   const { isSideBarVisible, isSideBarPinned } = useSidebarStore();
@@ -158,13 +160,20 @@ const Reader: React.FC<{ ids?: string }> = ({ ids }) => {
 
   return libraryLoaded && settings.globalReadSettings ? (
     <div
+      data-margin-rail-host={bookKeys.length > 0 ? 'true' : undefined}
       className={clsx(
-        'reader-page bg-base-200 text-base-content full-height select-none overflow-hidden',
+        'reader-page bg-base-200 text-base-content full-height relative select-none overflow-hidden',
         appService?.hasRoundedWindow && isRoundedWindow && 'window-border rounded-window',
       )}
     >
       <Suspense fallback={<div className='full-height'></div>}>
         <ReaderContent ids={ids} settings={settings} />
+        {/* One margin rail per open book. It sits outside the page flow so the
+            reading measure never shifts, and reads its own anchors from the
+            book's view on every relocate. */}
+        {bookKeys.map((bookKey) => (
+          <MarginRail key={bookKey} bookKey={bookKey} />
+        ))}
         <AboutWindow />
         <KeyboardShortcutsHelp />
         <UpdaterWindow />

@@ -79,14 +79,14 @@ afterEach(() => {
 });
 
 describe('MangaOverlay marginalia syntax', () => {
-  it('paints the translation on the stage instead of on a card', async () => {
+  it('sets the translation on a paper block instead of a floating card', async () => {
     setup();
     renderDanmaku();
     await screen.findByText('左译文');
 
     const el = chip('left')!;
-    expect(el.style.background).toBe('transparent');
-    // A note in the margin is not lifted off the page: no shadow, no blur.
+    expect(el.style.background).toBe('rgb(237, 230, 216)');
+    // Paper is flat: no shadow, no blur lifting it off the artwork.
     expect(el.style.boxShadow).toBe('');
     expect(el.style.backdropFilter).toBe('');
     expect(el.style.getPropertyValue('-webkit-backdrop-filter')).toBe('');
@@ -113,23 +113,59 @@ describe('MangaOverlay marginalia syntax', () => {
     expect(right.style.borderRadius).toBe('2px 0 0 2px');
   });
 
-  it('sets the marginalia type: UI font stack, 15px/1.75 and a 22em measure', async () => {
+  it('sets the marginalia type: the book serif at 15/26 and a 22em measure', async () => {
     setup();
     renderDanmaku();
     await screen.findByText('左译文');
 
     const el = chip('left')!;
-    expect(el.style.fontFamily).toContain('system-ui');
-    expect(el.style.fontFamily).toContain('PingFang SC');
-    expect(el.style.fontFamily).toContain('Noto Sans SC');
-    expect(el.style.fontFamily).not.toContain('serif;');
+    // A margin note speaks in the book's voice, not the UI's.
+    expect(el.style.fontFamily).toContain('Georgia');
+    expect(el.style.fontFamily).toContain('Songti SC');
+    expect(el.style.fontFamily).toContain('Noto Serif SC');
+    expect(el.style.fontFamily).toContain('serif');
+    expect(el.style.fontFamily).not.toContain('PingFang SC');
     expect(el.style.fontSize).toBe('15px');
-    expect(el.style.lineHeight).toBe('1.75');
+    expect(el.style.lineHeight).toBe('26px');
     // Capped at the measure while still never overflowing a narrow gutter.
     expect(el.style.maxWidth).toBe('min(22em, 100%)');
     expect(el.style.getPropertyValue('text-wrap')).toBe('pretty');
     expect(el.style.color).toBe('var(--color-base-content, #1d1d1f)');
     expect(el.style.color).not.toBe('#3A2230');
+  });
+
+  it('steps the pill up to 16px in a wide (≥1400px) reading area', async () => {
+    setup();
+    Object.defineProperty(window, 'innerWidth', { value: 1500, configurable: true, writable: true });
+
+    try {
+      renderDanmaku([LEFT_BUBBLE]);
+      await screen.findByText('左译文');
+      expect(chip('left')?.style.fontSize).toBe('16px');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true, writable: true });
+    }
+  });
+
+  it('fades each pill in with opacity only, at 120ms', async () => {
+    setup();
+    const animate = vi.fn(() => ({ cancel: vi.fn() }));
+    const proto = HTMLElement.prototype as unknown as { animate?: unknown };
+    const original = proto.animate;
+    proto.animate = animate;
+
+    try {
+      renderDanmaku([LEFT_BUBBLE]);
+      await screen.findByText('左译文');
+    } finally {
+      if (original === undefined) delete proto.animate;
+      else proto.animate = original;
+    }
+
+    expect(animate).toHaveBeenCalledTimes(1);
+    const call = animate.mock.calls[0] as unknown as [Keyframe[], KeyframeAnimationOptions];
+    expect(call[0]).toEqual([{ opacity: 0 }, { opacity: 1 }]);
+    expect(call[1].duration).toBe(120);
   });
 
   it('hangs the 原 tag on the chip edge instead of outside it', async () => {
@@ -156,7 +192,7 @@ describe('MangaOverlay marginalia syntax', () => {
     await screen.findByText('左译文');
 
     const el = chip('left')!;
-    expect(el.style.background).toBe('rgba(255, 255, 255, 0.9)');
+    expect(el.style.background).toBe('rgb(237, 230, 216)');
     expect(el.style.boxShadow).toBe('');
     expect(el.style.backdropFilter).toBe('');
     expect(el.style.borderRightWidth).toBe('2px');

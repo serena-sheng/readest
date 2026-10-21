@@ -155,7 +155,7 @@ describe('MangaOverlay danmaku layout against the image box', () => {
     expect(rightChip.style.borderRightStyle).toBe('none');
 
     expect(leftChip.style.fontSize).toBe('15px');
-    expect(leftChip.style.lineHeight).toBe('1.75');
+    expect(leftChip.style.lineHeight).toBe('26px');
   });
 
   it('narrows the image by exactly two gutter widths when space is tight', async () => {
@@ -203,14 +203,14 @@ describe('MangaOverlay danmaku layout against the image box', () => {
     expect(el.style.padding).toBe('3px 6px');
   });
 
-  it('keeps the marginalia transparent in dark mode', async () => {
+  it('uses the dark paper tone for marginalia in dark mode', async () => {
     useThemeStore.setState({ isDarkMode: true });
     setup({ containerWidth: 800, imageLeft: 265, imageWidth: 270, imageHeight: 400 });
 
     renderDanmaku();
     await screen.findByText('译文');
 
-    expect(chip()?.style.background).toBe('transparent');
+    expect(chip()?.style.background).toBe('rgb(42, 38, 32)');
     expect(chip()?.style.boxShadow).toBe('');
   });
 
@@ -223,7 +223,7 @@ describe('MangaOverlay danmaku layout against the image box', () => {
     // (200 - 120) / 2 = 40px gutter, below the 90px comfortable width.
     expect(gutter('left')?.style.width).toBe('40px');
     expect(chip()?.style.fontSize).toBe('13px');
-    expect(chip()?.style.lineHeight).toBe('1.75');
+    expect(chip()?.style.lineHeight).toBe('26px');
     expect(chip()?.style.borderRightWidth).toBe('2px');
     expect(chip()?.style.borderLeftStyle).toBe('none');
   });
