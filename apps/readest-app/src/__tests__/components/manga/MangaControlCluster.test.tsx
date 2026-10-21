@@ -214,10 +214,10 @@ describe('MangaControlCluster', () => {
   it('marks the selected state with a filled chip, not a hairline', () => {
     renderCluster({ mode: 'bubble' });
 
-    expect(modeButton('覆盖').className).toContain('bg-primary/12');
-    expect(modeButton('覆盖').className).toContain('text-primary');
+    expect(modeButton('覆盖').className).toContain('bg-study-ink/[0.08]');
+    expect(modeButton('覆盖').className).toContain('text-study-ink');
     expect(modeButton('覆盖').style.borderBottom).toBe('');
-    expect(modeButton('两侧').className).not.toContain('bg-primary/12');
+    expect(modeButton('两侧').className).not.toContain('bg-study-ink/[0.08]');
   });
 
   it('keeps the primary label and width stable, so hover never moves the cluster', () => {
@@ -225,7 +225,7 @@ describe('MangaControlCluster', () => {
 
     // The label is always rendered at its final width.
     expect(translateButton().textContent).toContain('翻译本页');
-    expect(translateButton().className).toContain('min-w-[96px]');
+    expect(translateButton().className).toContain('min-w-[104px]');
     expect(translateButton().className).not.toContain('group-hover');
     expect(translateButton().querySelector('span')!.className).not.toContain('max-w-0');
   });

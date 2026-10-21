@@ -154,9 +154,12 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
         setCorner(null);
         return;
       }
+      // Sit just inside the artwork: straddling its edge made the cluster read
+      // as a floating toolbar rather than a note tucked into the page.
+      const inset = 12;
       setCorner({
-        right: hostRect.right - (rect.right + (frameRect?.left ?? 0)),
-        bottom: hostRect.bottom - (rect.bottom + (frameRect?.top ?? 0)),
+        right: hostRect.right - (rect.right + (frameRect?.left ?? 0)) + inset,
+        bottom: hostRect.bottom - (rect.bottom + (frameRect?.top ?? 0)) + inset,
       });
     };
     measure();
@@ -294,7 +297,7 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
             title={available ? '翻译本页' : '本页没有可翻译的图片'}
             disabled={translateDisabled}
             onClick={onTranslate}
-            className='flex h-11 min-w-[96px] items-center justify-center gap-1.5 rounded-[4px] bg-primary px-3 text-[12px] leading-none text-primary-content enabled:hover:brightness-105 disabled:opacity-35'
+            className='flex h-11 min-w-[104px] items-center justify-center gap-1.5 rounded-[4px] bg-study-ink px-3 text-[12px] leading-none text-study-page enabled:hover:opacity-90105 disabled:opacity-35'
           >
             <MdTranslate size={18} aria-hidden='true' />
             {/* The label is always present at its final width: hovering must
@@ -330,7 +333,7 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
                   onClick={() => pickMode(option.mode)}
                   className={`flex-1 text-[12px] transition-colors duration-150 ease-study disabled:opacity-35 ${
                     selected
-                      ? 'bg-primary/12 text-primary'
+                      ? 'bg-study-ink/[0.08] font-medium text-study-ink shadow-[inset_0_-2px_0_0_var(--color-primary)]'
                       : 'text-study-ink/60 hover:bg-study-chip hover:text-study-ink'
                   }`}
                 >

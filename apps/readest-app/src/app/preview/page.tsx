@@ -86,7 +86,9 @@ const NOTES = [
 
 
 function Preview() {
-  const view = useSearchParams()?.get('v') ?? 'home';
+  const params = useSearchParams();
+  const view = params?.get('v') ?? 'home';
+  const state = params?.get('state') ?? 'idle';
   const [pageImg, setPageImg] = React.useState<HTMLImageElement | null>(null);
 
 
@@ -127,8 +129,8 @@ function Preview() {
             />
             <MangaControlCluster
               available
-              loading={false}
-              mode='bubble'
+              loading={state === 'loading'}
+              mode={state === 'danmaku' ? 'danmaku' : state === 'off' ? 'off' : 'bubble'}
               danmakuDisabledReason={null}
               bubbles={[
                 { box: [0.2, 0.2, 0.4, 0.3], src: 'Did you see that?', dst: '你看见了吗？', vertical: false },
