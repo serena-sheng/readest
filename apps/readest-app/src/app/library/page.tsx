@@ -120,6 +120,7 @@ import Spinner from '@/components/Spinner';
 import LibraryHeader from './components/LibraryHeader';
 import TagBrowserPanel from './components/TagBrowserPanel';
 import RenameSuggestionsDialog from './components/RenameSuggestionsDialog';
+import DiscoveryDialog from './components/DiscoveryDialog';
 import Bookshelf from './components/Bookshelf';
 import ImportMenuPopup from './components/ImportMenuPopup';
 import GroupHeader from './components/GroupHeader';
@@ -290,6 +291,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   const [isSelectNone, setIsSelectNone] = useState(false);
   const [isTagBrowserOpen, setIsTagBrowserOpen] = useState(false);
   const [showRenameSuggestions, setShowRenameSuggestions] = useState(false);
+  const [showDiscovery, setShowDiscovery] = useState(false);
   const [librarySearchQuery, setLibrarySearchQuery] = useState(searchParams?.get('q') ?? '');
   const pendingLibrarySearchQueryRef = useRef<string | null>(null);
   const [librarySearchProgress, setLibrarySearchProgress] = useState<number | null>(null);
@@ -2108,6 +2110,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           onToggleTagBrowser={() => setIsTagBrowserOpen((open) => !open)}
           isTagBrowserOpen={isTagBrowserOpen}
           onSuggestTitles={() => setShowRenameSuggestions(true)}
+          onScanImportable={isTauriAppPlatform() ? () => setShowDiscovery(true) : undefined}
           onToggleSelectMode={() => handleSetSelectMode(!isSelectMode)}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
@@ -2389,6 +2392,15 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
             books={libraryBooks.filter((book) => !book.deletedAt)}
             isLoggedIn={!!user}
             onClose={() => setShowRenameSuggestions(false)}
+          />
+        </ModalPortal>
+      )}
+      {showDiscovery && (
+        <ModalPortal>
+          <DiscoveryDialog
+            library={libraryBooks}
+            onClose={() => setShowDiscovery(false)}
+            onImport={(files) => importBooks(files, getImportTargetGroupId())}
           />
         </ModalPortal>
       )}

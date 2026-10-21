@@ -7,7 +7,7 @@ import { PiSelectionAll, PiSelectionAllFill } from 'react-icons/pi';
 import { PiDotsThreeCircle } from 'react-icons/pi';
 import { MdOutlineMenu } from 'react-icons/md';
 import { IoMdCloseCircle } from 'react-icons/io';
-import { TbWand } from 'react-icons/tb';
+import { TbRadar2, TbWand } from 'react-icons/tb';
 
 import { useEnv } from '@/context/EnvContext';
 import { useThemeStore } from '@/store/themeStore';
@@ -38,6 +38,7 @@ interface LibraryHeaderProps {
   onToggleTagBrowser?: () => void;
   isTagBrowserOpen?: boolean;
   onSuggestTitles?: () => void;
+  onScanImportable?: () => void;
   onToggleSelectMode: () => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
@@ -63,6 +64,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   onToggleTagBrowser,
   isTagBrowserOpen = false,
   onSuggestTitles,
+  onScanImportable,
   onToggleSelectMode,
   onSelectAll,
   onDeselectAll,
@@ -285,6 +287,17 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
                 onClick={onSuggestTitles}
               >
                 <TbWand role='none' size={iconSize18} />
+              </button>
+            )}
+            {onScanImportable && (
+              <button
+                type='button'
+                title={_('扫描添加')}
+                aria-label={_('扫描添加')}
+                className='btn btn-ghost h-8 min-h-8 w-8 p-0'
+                onClick={onScanImportable}
+              >
+                <TbRadar2 role='none' size={iconSize18} />
               </button>
             )}
             {onToggleTagBrowser && (

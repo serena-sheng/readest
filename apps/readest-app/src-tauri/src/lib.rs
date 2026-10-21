@@ -30,6 +30,7 @@ mod clip_url;
 mod comic_parser;
 mod cover_thumbnail;
 mod dir_scanner;
+mod disk_scan;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod discord_rpc;
 #[cfg(any(target_os = "android", test))]
@@ -675,6 +676,7 @@ pub fn run() {
             allow_paths_in_scopes,
             cover_thumbnail::optimize_cover_thumbnails,
             dir_scanner::read_dir,
+            disk_scan::scan_importable,
             backup_zip::write_backup_zip,
             backup_zip::extract_backup_zip,
             epub_parser::parse_epub_metadata,
