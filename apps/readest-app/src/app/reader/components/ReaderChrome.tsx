@@ -194,7 +194,7 @@ const ReaderChromeInner: React.FC<ReaderChromeProps> = ({
           setIsVisible(true);
         }}
       >
-        <div className='reader-chrome-row mx-auto flex h-11 w-[var(--reader-measure)] items-center justify-between'>
+        <div className='reader-chrome-row mx-auto flex h-11 w-[var(--reader-measure)] items-center justify-between px-[72px]'>
           <div className='flex items-center gap-1'>
             <button
               type='button'
