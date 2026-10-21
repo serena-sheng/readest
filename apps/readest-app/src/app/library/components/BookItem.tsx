@@ -176,7 +176,7 @@ const BookItem: React.FC<BookItemProps> = ({
           </div>
         )}
         {seriesIndex !== undefined && (
-          <span className='eink-bordered bg-base-100/90 text-base-content absolute end-1 top-1 rounded-sm px-1 text-[11px] font-medium leading-4 tabular-nums shadow-sm'>
+          <span className='eink-bordered bg-base-100/90 text-base-content absolute end-1 top-1 rounded-sm px-1 text-caption font-medium leading-4 tabular-nums shadow-sm'>
             #{seriesIndex}
           </span>
         )}
@@ -268,7 +268,7 @@ const BookItem: React.FC<BookItemProps> = ({
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className='eink-bordered text-neutral-content/70 border-base-content/15 inline-flex h-3.5 shrink-0 items-center whitespace-nowrap rounded-sm border px-1 text-[11px] leading-none'
+                  className='eink-bordered text-neutral-content/70 border-base-content/15 inline-flex h-3.5 shrink-0 items-center whitespace-nowrap rounded-sm border px-1 text-caption leading-none'
                 >
                   {tag}
                 </span>

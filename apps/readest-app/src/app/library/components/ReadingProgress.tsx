@@ -41,7 +41,7 @@ const ReadingProgress: React.FC<ReadingProgressProps> = memo(
 
     return (
       <div
-        className='text-base-content/55 flex min-w-0 items-center text-[13px] leading-[18px] font-normal tabular-nums'
+        className='text-base-content/55 flex min-w-0 items-center text-meta leading-[18px] font-normal tabular-nums'
         role='status'
         aria-label={label ?? undefined}
       >

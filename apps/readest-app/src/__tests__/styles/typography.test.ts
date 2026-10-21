@@ -24,6 +24,13 @@ describe('type scale tokens', () => {
 
   it('no longer reaches outside the scale in reader and library chrome', () => {
     const files = [
+      'app/library/components/LibraryHeader.tsx',
+      'app/library/components/BookItem.tsx',
+      'app/library/components/ReadingProgress.tsx',
+      'app/library/components/StatusBadge.tsx',
+      'app/library/components/LibrarySearchResults.tsx',
+      'app/reader/components/TranslationExpertPanel.tsx',
+      'app/reader/components/IdeasPanel.tsx',
       'app/reader/components/StatusInfo.tsx',
       'app/reader/components/TypesetPanel.tsx',
       'app/reader/components/annotator/HighlightOptions.tsx',
@@ -36,7 +43,7 @@ describe('type scale tokens', () => {
 
     for (const file of files) {
       const source = read(file);
-      for (const size of ['text-[8px]', 'text-[9px]', 'text-[10px]', 'text-[12.5px]']) {
+      for (const size of ['text-[8px]', 'text-[9px]', 'text-[10px]', 'text-[11px]', 'text-[12.5px]', 'text-[13px]']) {
         expect(source, `${file} still uses ${size}`).not.toContain(size);
       }
     }

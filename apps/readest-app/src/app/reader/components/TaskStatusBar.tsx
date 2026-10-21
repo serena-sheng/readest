@@ -121,7 +121,7 @@ const TaskStatusBar: React.FC<TaskStatusBarProps> = ({
     <div
       role={isError ? 'alert' : 'status'}
       {...{ [statusAttribute]: status.kind }}
-      className='pointer-events-auto absolute left-1/2 z-[9] flex h-9 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-[10px] px-3 text-body'
+      className='pointer-events-auto absolute left-1/2 z-[9] flex h-9 max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-[10px] px-3 text-body'
       style={{
         bottom: '56px',
         backgroundColor: 'color-mix(in srgb, var(--color-base-100) 92%, transparent)',
@@ -129,7 +129,7 @@ const TaskStatusBar: React.FC<TaskStatusBarProps> = ({
         boxShadow: '0 8px 24px rgba(0,0,0,.12)',
       }}
     >
-      <span className='text-base-content max-w-[calc(100vw-2rem)] min-w-0 truncate'>
+      <span className='text-base-content min-w-0 flex-1 truncate'>
         {message}
       </span>
       {status.kind === 'error' && status.detail && (

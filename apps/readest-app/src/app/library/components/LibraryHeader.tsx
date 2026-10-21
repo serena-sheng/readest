@@ -118,7 +118,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
     >
       <div className='flex w-full items-baseline gap-2 ps-6 pe-4'>
         <h1 className='library-title text-[19px] font-semibold leading-[26px]'>{_('Library')}</h1>
-        <span className='text-base-content/55 text-[11px] leading-4 font-normal tabular-nums'>
+        <span className='text-base-content/55 text-caption leading-4 font-normal tabular-nums'>
           {_('{{count}} books', { count: currentBooksCount })}
         </span>
       </div>
@@ -207,7 +207,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
                 className={clsx(
                   'text-base-content/55 hover:text-base-content',
                   'not-eink:transition-colors flex h-6 items-center gap-0.5 rounded-full px-1',
-                  'text-[11px] leading-4 font-normal whitespace-nowrap',
+                  'text-caption leading-4 font-normal whitespace-nowrap',
                 )}
                 onClick={() => onSearchTargetChange(searchTarget === 'text' ? 'books' : 'text')}
               >

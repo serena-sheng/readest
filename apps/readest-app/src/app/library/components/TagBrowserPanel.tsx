@@ -310,7 +310,7 @@ const TagBrowserPanel: React.FC<TagBrowserPanelProps> = ({ open, onClose }) => {
             本地服务未连接
           </p>
         ) : (
-          <p className='text-[11px] opacity-60'>
+          <p className='text-caption opacity-60'>
             {loadStatus === 'loading'
               ? '正在读取…'
               : querying
@@ -368,7 +368,7 @@ const TagBrowserPanel: React.FC<TagBrowserPanelProps> = ({ open, onClose }) => {
                     onClick={(event) => handleTagClick(tag, event.shiftKey || event.altKey)}
                   >
                     <span className='truncate'>{tag.name}</span>
-                    <span className='text-[11px] tabular-nums opacity-50'>{tag.count}</span>
+                    <span className='text-caption tabular-nums opacity-50'>{tag.count}</span>
                   </button>
                 ))}
               </div>
@@ -392,7 +392,7 @@ const TagBrowserPanel: React.FC<TagBrowserPanelProps> = ({ open, onClose }) => {
                     className='flex items-baseline justify-between gap-2 rounded-field px-1.5 py-1 text-sm'
                   >
                     <span className='truncate'>{book.title}</span>
-                    <span className='shrink-0 text-[11px] opacity-60'>
+                    <span className='shrink-0 text-caption opacity-60'>
                       {matchedTags} {expression.trim() ? '个匹配标签' : '个标签'}
                     </span>
                   </li>
@@ -401,7 +401,7 @@ const TagBrowserPanel: React.FC<TagBrowserPanelProps> = ({ open, onClose }) => {
             </ul>
           )}
           {matched > results.length && (
-            <p className='mt-1.5 shrink-0 text-[11px] opacity-60'>
+            <p className='mt-1.5 shrink-0 text-caption opacity-60'>
               只显示前 {results.length} 本，共 {matched} 本
             </p>
           )}

@@ -60,7 +60,7 @@ const FailedImportsDialog: React.FC<FailedImportsDialogProps> = ({ failedImports
                   {item.filename}
                 </span>
                 {!sharedError && item.errorMessage && (
-                  <span className='text-base-content/55 break-words text-[11px] leading-snug'>
+                  <span className='text-base-content/55 break-words text-caption leading-snug'>
                     {item.errorMessage}
                   </span>
                 )}

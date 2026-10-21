@@ -473,7 +473,7 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
         <section>
           <div className='flex items-baseline justify-between gap-2'>
             <h3 className='text-sm font-medium'>术语表</h3>
-            <span className='text-[11px] opacity-60'>{savedGlossaryCount} 条已暂存</span>
+            <span className='text-caption opacity-60'>{savedGlossaryCount} 条已暂存</span>
           </div>
           <textarea
             aria-label='术语表'
@@ -484,7 +484,7 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
             onChange={(event) => setGlossary(event.target.value)}
             onBlur={() => setSavedGlossary(glossary.trim())}
           />
-          <p className='mt-1.5 text-[11px] opacity-60'>失焦后暂存在面板里；保存专家时一并提交。</p>
+          <p className='mt-1.5 text-caption opacity-60'>失焦后暂存在面板里；保存专家时一并提交。</p>
         </section>
 
         <section>
@@ -523,7 +523,7 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
                   onClick={() => applyExpert(expert)}
                 >
                   <span className='block truncate text-sm'>{expert.name}</span>
-                  <span className='mt-0.5 block text-[11px] opacity-60'>
+                  <span className='mt-0.5 block text-caption opacity-60'>
                     {genreLabel} · {modeLabel} · {expert.glossary_count} 条术语
                   </span>
                 </button>
@@ -564,7 +564,7 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
                 }}
                 onBlur={saveLocalGlossary}
               />
-              <div className='mt-1.5 flex flex-wrap items-center gap-2 text-[11px]'>
+              <div className='mt-1.5 flex flex-wrap items-center gap-2 text-caption'>
                 <span className='opacity-60'>
                   {localGlossaryCount} 条 · 仅对 OpenAI 兼容端点生效
                 </span>
@@ -750,7 +750,7 @@ const TranslationExpertPanel: React.FC<TranslationExpertPanelProps> = ({
           {binding ? '设置中…' : '设为本书默认'}
         </button>
         {note && (
-          <p className={clsx('mt-2 text-[11px]', noteFailed ? 'text-error' : 'opacity-60')}>
+          <p className={clsx('mt-2 text-caption', noteFailed ? 'text-error' : 'opacity-60')}>
             {note}
           </p>
         )}

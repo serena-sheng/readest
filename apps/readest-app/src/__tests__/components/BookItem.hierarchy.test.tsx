@@ -68,7 +68,7 @@ describe('library card information hierarchy', () => {
     expect(title.className).toContain('font-medium');
 
     const meta = screen.getByRole('status');
-    expect(meta.className).toContain('text-[13px]');
+    expect(meta.className).toContain('text-meta');
     expect(meta.className).toContain('leading-[18px]');
     expect(meta.className).toContain('font-normal');
     expect(meta.className).toContain('tabular-nums');

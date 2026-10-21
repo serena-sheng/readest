@@ -154,7 +154,7 @@ const IdeasPanel: React.FC<IdeasPanelProps> = ({ title, open, onClose }) => {
                   {note.note}
                 </p>
               )}
-              <div className='mt-3 flex items-center gap-2 text-[11px] opacity-60'>
+              <div className='mt-3 flex items-center gap-2 text-caption opacity-60'>
                 <span className='min-w-0 flex-1 truncate'>{footer}</span>
                 <div className='relative' data-ideas-menu>
                   <button
@@ -172,7 +172,7 @@ const IdeasPanel: React.FC<IdeasPanelProps> = ({ title, open, onClose }) => {
                     <div className='absolute bottom-7 right-0 z-10 w-32 rounded-field border border-base-content/10 bg-base-100 p-1 shadow-lg'>
                       {confirmFor === note.uuid ? (
                         <div className='px-2 py-1.5'>
-                          <p className='text-[11px] opacity-70'>确定删除？</p>
+                          <p className='text-caption opacity-70'>确定删除？</p>
                           <div className='mt-1.5 flex justify-end gap-1'>
                             <button
                               className='btn btn-ghost btn-xs'

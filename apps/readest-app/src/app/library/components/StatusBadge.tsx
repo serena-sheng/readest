@@ -15,7 +15,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, children, className }
       className={clsx(
         'inline-flex items-center justify-center',
         'rounded-[1px] px-0.5',
-        'text-[11px] font-medium leading-none',
+        'text-caption font-medium leading-none',
         'h-3.5',
         status === 'finished' && 'status-badge-finished',
         status === 'unread' && 'status-badge-unread',

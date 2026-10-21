@@ -274,7 +274,7 @@ const SelectionActions: React.FC<SelectionActionsProps> = ({
           </p>
           <textarea
             aria-label='想法'
-            className='textarea textarea-bordered w-full resize-y font-serif text-[13px] leading-relaxed'
+            className='textarea textarea-bordered w-full resize-y font-serif text-meta leading-relaxed'
             rows={3}
             placeholder='写点什么…'
             value={note}

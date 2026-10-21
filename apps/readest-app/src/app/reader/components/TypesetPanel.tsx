@@ -704,7 +704,7 @@ const TypesetPanel: React.FC<TypesetPanelProps> = ({ bookKey, title, open, onClo
                 >
                   <span className='flex items-center justify-between gap-2'>
                     <span className='text-sm font-semibold'>{preset.label}</span>
-                    <span className='text-base-content/50 text-[11px]'>
+                    <span className='text-base-content/50 text-caption'>
                       {preset.fontSize}px · {preset.lineHeight.toFixed(1)} 行距
                     </span>
                   </span>
