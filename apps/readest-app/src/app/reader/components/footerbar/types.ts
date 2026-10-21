@@ -8,6 +8,11 @@ export interface FooterBarProps {
   pageinfo?: PageInfo;
   isHoveredAnim: boolean;
   gridInsets: Insets;
+  /**
+   * Renders as the quiet chrome's 40px bottom overlay: no border, no shadow,
+   * no hover trigger of its own (the 2px hairline's strip opens it).
+   */
+  compact?: boolean;
 }
 
 export interface NavigationHandlers {

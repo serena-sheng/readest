@@ -133,7 +133,9 @@ const TOCItemView = React.memo<{
       aria-selected={isActive ? 'true' : 'false'}
       data-href={item.href ? getContentMd5(item.href) : undefined}
       className={clsx(
-        'flex w-full cursor-pointer items-center rounded-md py-4 sm:py-2 sm:hover:bg-base-300/75',
+        'flex w-full cursor-pointer items-center gap-2 border-s-2 py-4 sm:py-2 sm:hover:bg-study-chip/60',
+        'transition-colors duration-150 ease-study',
+        isActive ? 'border-primary' : 'border-transparent',
       )}
       style={{
         height: itemSize ? `${itemSize}px` : 'auto',
@@ -156,15 +158,24 @@ const TOCItemView = React.memo<{
           {createExpanderIcon(flatItem.isExpanded || false)}
         </button>
       )}
-      <div className='ms-2 min-w-0 break-words'>{item.label}</div>
-      {(item.location || item.index !== undefined) && (
-        <div
-          aria-hidden='true'
-          className='text-base-content/50 ms-auto shrink-0 ps-1 text-xs sm:pe-1'
-        >
-          {item.location ? item.location.current + 1 : item.index + 1}
-        </div>
-      )}
+      {/* Contents-page typography: chapter name, a dotted leader, page number. */}
+      <div className='flex min-w-0 flex-1 items-baseline gap-2'>
+        <div className='min-w-0 truncate'>{item.label}</div>
+        {(item.location || item.index !== undefined) && (
+          <span
+            aria-hidden='true'
+            className='border-study-ink/20 mb-1 min-w-4 flex-1 self-center border-b border-dotted'
+          />
+        )}
+        {(item.location || item.index !== undefined) && (
+          <div
+            aria-hidden='true'
+            className='text-study-ink/55 shrink-0 text-meta tabular-nums'
+          >
+            {item.location ? item.location.current + 1 : item.index + 1}
+          </div>
+        )}
+      </div>
     </div>
   );
 });

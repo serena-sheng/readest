@@ -251,7 +251,7 @@ export const CacheManagerWindow = () => {
 
           {/* Confirm notice */}
           {status === 'confirming' && (
-            <p className='text-base-content/60 flex items-center justify-center gap-1.5 text-center text-[13px] leading-relaxed'>
+            <p className='text-base-content/60 flex items-center justify-center gap-1.5 text-center text-meta leading-relaxed'>
               <RiErrorWarningFill className='text-warning h-4 w-4 shrink-0' aria-hidden='true' />
               {orphanCount > 0
                 ? _(

@@ -8,10 +8,10 @@ const globals = read('styles/globals.css');
 
 const SCALE = {
   caption: { size: '12px', lineHeight: '17px' },
-  meta: { size: '13px', lineHeight: '19px' },
+  meta: { size: '12px', lineHeight: '18px' },
   body: { size: '15px', lineHeight: '26px' },
   title: { size: '19px', lineHeight: '26px' },
-  display: { size: '44px', lineHeight: '48px' },
+  display: { size: '34px', lineHeight: '40px' },
 } as const;
 
 describe('type scale tokens', () => {

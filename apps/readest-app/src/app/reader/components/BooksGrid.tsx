@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { Insets } from '@/types/misc';
+import { FIXED_LAYOUT_FORMATS } from '@/types/book';
 import { useEnv } from '@/context/EnvContext';
 import { useThemeStore } from '@/store/themeStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -22,7 +23,7 @@ import BooknotesNav from './sidebar/BooknotesNav';
 import FoliateViewer from './FoliateViewer';
 import HandwritingOverlay from './handwriting/HandwritingOverlay';
 import SectionInfo from './SectionInfo';
-import HeaderBar from './HeaderBar';
+import ReaderChrome from './ReaderChrome';
 import PageNavigationButtons from './PageNavigationButtons';
 import FooterBar from './footerbar/FooterBar';
 import ProgressBar from './ProgressBar';
@@ -93,14 +94,11 @@ interface BookCellProps {
 
 const BookCellInner: React.FC<BookCellProps> = ({
   bookKey,
-  index,
   gridInsets: cellInsets,
   chromeInsets: chromeCellInsets,
   spansWidth,
-  screenInsets,
   cornerRadii,
   appServiceHasRoundedWindow,
-  isHoveredAnim,
   hoveredBookKey,
   isDropdownOpen,
   setDropdownOpenForBook,
@@ -186,6 +184,14 @@ const BookCellInner: React.FC<BookCellProps> = ({
   const columnGap = getSpreadColumnGap(viewSettings, getView(bookKey)?.renderer?.columnCount ?? 1);
   const showHeader = viewSettings.showHeader;
   const showFooter = viewSettings.showFooter;
+  // The quiet chrome's bottom hairline tracks the same fraction the footer bar
+  // draws: fixed-layout books count sections, reflowable ones count pages.
+  const chromeProgress = FIXED_LAYOUT_FORMATS.has(book.format) ? section : pageinfo;
+  const chromeProgressValid = !!chromeProgress && chromeProgress.total > 0;
+  const chromeFraction = chromeProgressValid
+    ? (chromeProgress.current + 1) / chromeProgress.total
+    : 0;
+  const chromePage = chromeProgress ? chromeProgress.current + 1 : undefined;
 
   return (
     <div
@@ -199,13 +205,13 @@ const BookCellInner: React.FC<BookCellProps> = ({
         appServiceHasRoundedWindow && 'rounded-window',
       )}
     >
-      <HeaderBar
+      <ReaderChrome
         bookKey={bookKey}
-        gridInsets={chromeGridInsets}
-        screenInsets={screenInsets}
         bookTitle={book.title}
-        isTopLeft={index === 0}
-        isHoveredAnim={isHoveredAnim}
+        sectionLabel={sectionLabel}
+        page={chromePage}
+        fraction={chromeFraction}
+        gridInsets={chromeGridInsets}
         onCloseBook={onCloseBook}
         onGoToLibrary={onGoToLibrary}
         onDropdownOpenChange={onDropdownOpenChange}
@@ -329,6 +335,7 @@ const BookCellInner: React.FC<BookCellProps> = ({
         pageinfo={pageinfo}
         isHoveredAnim={false}
         gridInsets={chromeGridInsets}
+        compact
       />
       <ReadingStatsTracker bookKey={bookKey} />
     </div>

@@ -26,6 +26,7 @@ const FooterBar: React.FC<FooterBarProps> = ({
   pageinfo,
   isHoveredAnim,
   gridInsets,
+  compact = false,
 }) => {
   const _ = useTranslation();
   const { appService } = useEnv();
@@ -230,6 +231,7 @@ const FooterBar: React.FC<FooterBarProps> = ({
     appService?.hasRoundedWindow && 'rounded-window-bottom-right',
     !isSideBarVisible && appService?.hasRoundedWindow && 'rounded-window-bottom-left',
     isHoveredAnim && 'hover-bar-anim',
+    compact && 'sm:h-10! hairline-t bg-study-canvas shadow-none!',
     !forceMobileLayout &&
       (needHorizontalScroll
         ? [HORIZONTAL_SCROLLBAR_LIFT, 'sm:h-10! sm:justify-end']
@@ -245,18 +247,21 @@ const FooterBar: React.FC<FooterBarProps> = ({
 
   return (
     <>
-      {/* Hover trigger area */}
-      <div
-        role='none'
-        tabIndex={-1}
-        className={clsx(
-          'absolute bottom-0 left-0 z-10 flex h-[52px] w-full',
-          needHorizontalScroll && [HORIZONTAL_SCROLLBAR_LIFT, 'sm:h-7!'],
-          isMobile || pointerInDoc ? 'pointer-events-none' : '',
-        )}
-        onMouseEnter={() => !isMobile && setHoveredBookKey(bookKey)}
-        onTouchStart={() => !isMobile && setHoveredBookKey(bookKey)}
-      />
+      {/* Hover trigger area. The quiet chrome's own 2px strip opens the
+          compact footer, so it does not need a second 52px trigger. */}
+      {!compact && (
+        <div
+          role='none'
+          tabIndex={-1}
+          className={clsx(
+            'absolute bottom-0 left-0 z-10 flex h-[52px] w-full',
+            needHorizontalScroll && [HORIZONTAL_SCROLLBAR_LIFT, 'sm:h-7!'],
+            isMobile || pointerInDoc ? 'pointer-events-none' : '',
+          )}
+          onMouseEnter={() => !isMobile && setHoveredBookKey(bookKey)}
+          onTouchStart={() => !isMobile && setHoveredBookKey(bookKey)}
+        />
+      )}
 
       {/* Main footer container */}
       <div

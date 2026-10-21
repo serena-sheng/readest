@@ -217,7 +217,7 @@ const BookItem: React.FC<BookItemProps> = ({
             {title}
           </h4>
           {seriesOrder !== undefined && (
-            <p className='text-base-content/55 truncate text-[11px] leading-[15px] tabular-nums'>
+            <p className='text-base-content/55 truncate text-caption tabular-nums'>
               {`第 ${seriesOrder} 卷`}
             </p>
           )}

@@ -322,7 +322,9 @@ export const READING_RULER_COLORS: Record<ReadingRulerColor, string> = {
 };
 
 export const DEFAULT_READSETTINGS: ReadSettings = {
-  sideBarWidth: '15%',
+  // The study direction's contents page is a fixed 320px column: wide enough
+  // for "chapter …… 214" on one line, narrow enough to leave the text measure.
+  sideBarWidth: '320px',
   isSideBarPinned: true,
   notebookWidth: '25%',
   isNotebookPinned: false,

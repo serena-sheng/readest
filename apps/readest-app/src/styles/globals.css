@@ -21,21 +21,49 @@
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* Book titles and section headings. The stack is the study direction's
+     serif: Source Han Serif for CJK, Source Serif for Latin, then the system
+     serif. Sizes stay in the type scale below. */
+  --font-serif: 'Source Han Serif CN', 'Source Serif 4', Georgia, serif;
 
-  /* Type scale. Five steps only: chrome text takes the smallest two, body
-     copy the middle, headings the fourth, and a single display size for the
-     few full-bleed numerals (RSVP). Line heights are part of each step so a
-     `text-body` never needs a hand-tuned `leading-*` beside it. */
+  /* Type scale — the study direction's five steps. Line heights and weights
+     are part of each step so `text-section` never needs a hand-tuned
+     `leading-*` or `font-medium` beside it. `caption` and `title` are the two
+     remaining chrome steps the older library/reader chrome still uses. */
   --text-caption: 12px;
   --text-caption--line-height: 17px;
-  --text-meta: 13px;
-  --text-meta--line-height: 19px;
+  --text-meta: 12px;
+  --text-meta--line-height: 18px;
   --text-body: 15px;
   --text-body--line-height: 26px;
   --text-title: 19px;
   --text-title--line-height: 26px;
-  --text-display: 44px;
-  --text-display--line-height: 48px;
+  /* Reading copy: a touch larger and looser than UI body copy. */
+  --text-read: 17px;
+  --text-read--line-height: 29px;
+  --text-section: 22px;
+  --text-section--line-height: 30px;
+  --text-section--font-weight: 500;
+  --text-display: 34px;
+  --text-display--line-height: 40px;
+  --text-display--font-weight: 500;
+
+  /* Study surfaces. The canvas is the desk the library sits on, the page is
+     the reading sheet, the chip is the quiet fill behind controls. Utilities
+     read these at use time, so the dark overrides further down flip them
+     without regenerating classes. */
+  --color-study-canvas: #f6f1e7;
+  --color-study-page: #fdfbf7;
+  --color-study-chip: #ede6d8;
+  --color-study-ink: #1a1610;
+  --hairline: 1px solid rgba(26, 22, 16, 0.1);
+  --radius-cover: 2px;
+  --radius-control: 4px;
+  /* The cover is the only thing in the study direction allowed to cast a
+     shadow; everything else is separated by a hairline. */
+  --shadow-cover:
+    0 1px 2px rgba(60, 45, 25, 0.06), 0 8px 24px rgba(60, 45, 25, 0.05);
+  --ease-study: cubic-bezier(0.23, 1, 0.32, 1);
 
   /* Tailwind 4 replaced the default palette with wider-gamut oklch values, so
      every `*-green-500`-style accent shifted (more vivid on P3 displays). Pin
@@ -211,6 +239,17 @@
   --color-rose-950: #4c0519;
 }
 
+/* The study surfaces follow the in-app theme, which daisyUI stamps on the root
+   as `data-theme="<color>-dark"`. Utilities read these variables at use time,
+   so a plain override flips them without regenerating any class. */
+:root[data-theme$='-dark'] {
+  --color-study-canvas: #141210;
+  --color-study-page: #1b1815;
+  --color-study-chip: #2a2620;
+  --color-study-ink: #e9e2d5;
+  --hairline: 1px solid rgba(233, 226, 213, 0.1);
+}
+
 /* Tailwind 3 Preflight defaults that v4 changed; the UI was tuned on them. */
 @layer base {
   *,
@@ -266,6 +305,20 @@
     -webkit-appearance: none;
     margin: 0;
   }
+}
+
+/* The study direction separates things with one hairline instead of a border
+   colour per component, so the line flips with the theme in one place. */
+@utility hairline-t {
+  border-top: var(--hairline);
+}
+
+@utility hairline-b {
+  border-bottom: var(--hairline);
+}
+
+@utility hairline-e {
+  border-inline-end: var(--hairline);
 }
 
 /* Everything below competes with Tailwind's utilities inside the `utilities`

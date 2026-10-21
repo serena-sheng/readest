@@ -64,6 +64,7 @@ import { useDemoBooks } from './hooks/useDemoBooks';
 import { useBooksSync } from './hooks/useBooksSync';
 import { useLibraryFileSync } from './hooks/useLibraryFileSync';
 import { useBookTransferActions } from './hooks/useBookTransferActions';
+import { useOpenBook } from './hooks/useOpenBook';
 import { useAbsOfflineDownload } from './hooks/useAbsOfflineDownload';
 import { useAutoImportFolders } from './hooks/useAutoImportFolders';
 import { useInboxDrainer } from '@/hooks/useInboxDrainer';
@@ -122,6 +123,7 @@ import TagBrowserPanel from './components/TagBrowserPanel';
 import RenameSuggestionsDialog from './components/RenameSuggestionsDialog';
 import DiscoveryDialog from './components/DiscoveryDialog';
 import Bookshelf from './components/Bookshelf';
+import LibraryHome from './components/LibraryHome';
 import ImportMenuPopup from './components/ImportMenuPopup';
 import GroupHeader from './components/GroupHeader';
 import FailedImportsDialog, { FailedImport } from './components/FailedImportsDialog';
@@ -287,6 +289,9 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   // remount, which used to flash a placeholder before `initLibrary` finished.
   const [libraryLoaded, setLibraryLoaded] = useState(() => libraryBooks.length > 0);
   const [isSelectMode, setIsSelectMode] = useState(false);
+  // The study home is the landing view; "全部 N 本" hands the page back to the
+  // classic header + cover grid.
+  const [isHomeView, setIsHomeView] = useState(true);
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [isSelectNone, setIsSelectNone] = useState(false);
   const [isTagBrowserOpen, setIsTagBrowserOpen] = useState(false);
@@ -1264,6 +1269,9 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     updateBook,
     setBooksTransferProgress,
   );
+  // The home view opens books through the same availability-aware flow the
+  // grid uses (cloud copies download on demand, missing files drop cleanly).
+  const { openBook } = useOpenBook({ setLoading, handleBookDownload });
 
   const handleBookDelete = (deleteAction: DeleteAction) => {
     return async (book: Book, syncBooks = true) => {
@@ -2076,6 +2084,16 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   }
 
   const showBookshelf = libraryLoaded || libraryBooks.length > 0;
+  // The study home owns the whole page — its own 44px bar replaces the library
+  // header — until the reader asks for the grid: searching, entering a group,
+  // selecting books, or tapping "全部 N 本".
+  const showHome =
+    showBookshelf &&
+    isHomeView &&
+    !currentGroupPath &&
+    !currentVirtualGroup &&
+    !librarySearchQuery.trim() &&
+    !isSelectMode;
 
   return (
     <div
@@ -2092,8 +2110,9 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
         tabIndex={-1}
         aria-label={_('Library Header')}
       >
-        <LibraryHeader
-          isSelectMode={isSelectMode}
+        {!showHome && (
+          <LibraryHeader
+            isSelectMode={isSelectMode}
           isSelectAll={isSelectAll}
           onPullLibrary={pullLibrary}
           onImportBooksFromFiles={handleImportBooksFromFiles}
@@ -2120,7 +2139,9 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           onSearchConfigChange={handleSearchConfigChange}
           onSearchQueryChange={handleSearchQueryChange}
           onSearchTargetChange={handleSearchTargetChange}
+          onBackHome={() => setIsHomeView(true)}
         />
+        )}
         <progress
           aria-label={_('Library Search Progress')}
           aria-hidden={librarySearchProgress != null ? 'false' : 'true'}
@@ -2219,7 +2240,25 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
         />
       )}
       <BookshelvesDialog />
-      {showBookshelf && (
+      {showBookshelf && showHome && (
+        <div aria-label={_('Your Bookshelf')} className='flex min-h-0 grow flex-col'>
+          <LibraryHome
+            books={libraryBooks}
+            onOpenBook={openBook}
+            onShowAll={() => setIsHomeView(false)}
+            onSearch={(query) => {
+              handleSearchQueryChange(query);
+              setIsHomeView(false);
+            }}
+            onImport={handleImportBooksFromFiles}
+            onOpenMenu={(anchor) => {
+              setIsSelectMode(false);
+              setImportMenuAnchor(anchor);
+            }}
+          />
+        </div>
+      )}
+      {showBookshelf && !showHome && (
         <div aria-label={_('Your Bookshelf')} className='flex min-h-0 grow flex-col'>
           <div
             ref={containerRef}

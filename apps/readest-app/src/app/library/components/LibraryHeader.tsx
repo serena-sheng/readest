@@ -48,6 +48,8 @@ interface LibraryHeaderProps {
   onSearchConfigChange: (config: LibrarySearchConfig) => void;
   onSearchQueryChange: (query: string) => void;
   onSearchTargetChange: (target: LibrarySearchTarget) => void;
+  /** Returns to the study home when the header's title is pressed. */
+  onBackHome?: () => void;
 }
 
 const LibraryHeader: React.FC<LibraryHeaderProps> = ({
@@ -74,6 +76,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   onSearchConfigChange,
   onSearchQueryChange,
   onSearchTargetChange,
+  onBackHome,
 }) => {
   const _ = useTranslation();
   const { appService } = useEnv();
@@ -122,7 +125,17 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
       }}
     >
       <div className='flex w-full items-baseline gap-2 ps-6 pe-4'>
-        <h1 className='library-title text-[19px] font-semibold leading-[26px]'>{_('Library')}</h1>
+        {onBackHome ? (
+          <button
+            type='button'
+            onClick={onBackHome}
+            className='library-title hover:text-base-content/70 text-[19px] font-semibold leading-[26px] transition-colors duration-200'
+          >
+            {_('Library')}
+          </button>
+        ) : (
+          <h1 className='library-title text-[19px] font-semibold leading-[26px]'>{_('Library')}</h1>
+        )}
         <span className='text-base-content/55 text-caption leading-4 font-normal tabular-nums'>
           {_('{{count}} books', { count: currentBooksCount })}
         </span>

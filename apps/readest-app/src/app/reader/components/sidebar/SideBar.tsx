@@ -187,12 +187,10 @@ const SideBar = ({}) => {
       <div
         ref={sidebarRef}
         className={clsx(
-          'sidebar-container flex min-w-60 select-none flex-col',
+          'sidebar-container hairline-e bg-study-canvas flex min-w-60 select-none flex-col',
           'full-height transition-[padding-top] duration-300',
-          viewSettings?.isEink ? 'bg-base-100' : 'bg-base-200',
           appService?.hasRoundedWindow && 'rounded-window-top-left rounded-window-bottom-left',
-          isSideBarPinned ? 'z-20' : 'z-[45] shadow-2xl',
-          !isSideBarPinned && viewSettings?.isEink && 'border-base-content border-e',
+          isSideBarPinned ? 'z-20' : 'z-[45]',
         )}
         role='navigation'
         aria-label={_('Sidebar')}
