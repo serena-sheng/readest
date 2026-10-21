@@ -119,6 +119,7 @@ import { createBookGroups, findGroupById, getBreadcrumbs } from './utils/library
 import Spinner from '@/components/Spinner';
 import LibraryHeader from './components/LibraryHeader';
 import TagBrowserPanel from './components/TagBrowserPanel';
+import RenameSuggestionsDialog from './components/RenameSuggestionsDialog';
 import Bookshelf from './components/Bookshelf';
 import ImportMenuPopup from './components/ImportMenuPopup';
 import GroupHeader from './components/GroupHeader';
@@ -288,6 +289,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [isSelectNone, setIsSelectNone] = useState(false);
   const [isTagBrowserOpen, setIsTagBrowserOpen] = useState(false);
+  const [showRenameSuggestions, setShowRenameSuggestions] = useState(false);
   const [librarySearchQuery, setLibrarySearchQuery] = useState(searchParams?.get('q') ?? '');
   const pendingLibrarySearchQueryRef = useRef<string | null>(null);
   const [librarySearchProgress, setLibrarySearchProgress] = useState<number | null>(null);
@@ -2105,6 +2107,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           onOpenFeeds={handleShowFeeds}
           onToggleTagBrowser={() => setIsTagBrowserOpen((open) => !open)}
           isTagBrowserOpen={isTagBrowserOpen}
+          onSuggestTitles={() => setShowRenameSuggestions(true)}
           onToggleSelectMode={() => handleSetSelectMode(!isSelectMode)}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
@@ -2380,6 +2383,15 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
         onImport={handleImportNovelFile}
       />
       <TagBrowserPanel open={isTagBrowserOpen} onClose={() => setIsTagBrowserOpen(false)} />
+      {showRenameSuggestions && (
+        <ModalPortal>
+          <RenameSuggestionsDialog
+            books={libraryBooks.filter((book) => !book.deletedAt)}
+            isLoggedIn={!!user}
+            onClose={() => setShowRenameSuggestions(false)}
+          />
+        </ModalPortal>
+      )}
       <ClipSignInAlert />
       <Toast />
     </div>

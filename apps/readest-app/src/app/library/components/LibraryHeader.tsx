@@ -7,6 +7,7 @@ import { PiSelectionAll, PiSelectionAllFill } from 'react-icons/pi';
 import { PiDotsThreeCircle } from 'react-icons/pi';
 import { MdOutlineMenu } from 'react-icons/md';
 import { IoMdCloseCircle } from 'react-icons/io';
+import { TbWand } from 'react-icons/tb';
 
 import { useEnv } from '@/context/EnvContext';
 import { useThemeStore } from '@/store/themeStore';
@@ -36,6 +37,7 @@ interface LibraryHeaderProps {
   onOpenFeeds: () => void;
   onToggleTagBrowser?: () => void;
   isTagBrowserOpen?: boolean;
+  onSuggestTitles?: () => void;
   onToggleSelectMode: () => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
@@ -60,6 +62,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   onOpenFeeds,
   onToggleTagBrowser,
   isTagBrowserOpen = false,
+  onSuggestTitles,
   onToggleSelectMode,
   onSelectAll,
   onDeselectAll,
@@ -272,6 +275,18 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
           </div>
         ) : (
           <div className='flex h-full items-center gap-x-2 sm:gap-x-4'>
+            {onSuggestTitles && (
+              <button
+                type='button'
+                title={_('建议书名')}
+                aria-label={_('建议书名')}
+                className='btn btn-ghost h-8 min-h-8 w-8 p-0'
+                disabled={currentBooksCount === 0}
+                onClick={onSuggestTitles}
+              >
+                <TbWand role='none' size={iconSize18} />
+              </button>
+            )}
             {onToggleTagBrowser && (
               <button
                 type='button'
