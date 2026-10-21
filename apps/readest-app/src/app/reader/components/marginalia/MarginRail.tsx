@@ -9,15 +9,15 @@ import MarginNoteItem, { MARGIN_NOTE_HEIGHT } from './MarginNoteItem';
 /** Below this width the 72px gutter cannot exist beside the measure. */
 export const NARROW_BREAKPOINT = 1200;
 /** Width of the annotation gutter at the right of the reading measure. */
-export const RAIL_WIDTH_WIDE = 72;
-/** A 13" window keeps a 56px column: still three characters per line. */
-export const RAIL_WIDTH_COMPACT = 56;
+export const RAIL_WIDTH_WIDE = 160;
+/** A 13" window still fits a real margin: 120px holds eight characters. */
+export const RAIL_WIDTH_COMPACT = 120;
 export const COMPACT_BREAKPOINT = 1400;
 export const RAIL_WIDTH = RAIL_WIDTH_WIDE;
 export const railWidthFor = (viewportWidth: number): number =>
   viewportWidth >= COMPACT_BREAKPOINT ? RAIL_WIDTH_WIDE : RAIL_WIDTH_COMPACT;
 /** Length of the hairline that ties a note to its paragraph. */
-export const LEAD_LENGTH = 24;
+export const LEAD_LENGTH = 16;
 /** Breathing room between a note pushed down and the paragraph above it. */
 const STACK_GAP = 8;
 
@@ -372,7 +372,7 @@ const MarginRail: React.FC<MarginRailProps> = ({
               top: 10,
               width: LEAD_LENGTH,
               [isRtl ? 'left' : 'right']: '100%',
-              background: 'rgba(26,22,16,.16)',
+              background: 'rgba(26,22,16,.28)',
             }}
           />
           <MarginNoteItem

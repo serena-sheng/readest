@@ -299,10 +299,17 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
             onClick={onTranslate}
             className='flex h-11 min-w-[104px] items-center justify-center gap-1.5 rounded-[4px] bg-study-ink px-3 text-[12px] leading-none text-study-page enabled:hover:opacity-90105 disabled:opacity-35'
           >
-            <MdTranslate size={18} aria-hidden='true' />
+            {loading ? (
+              <span
+                aria-hidden='true'
+                className='h-4 w-4 animate-spin rounded-full border-2 border-study-page/35 border-t-study-page'
+              />
+            ) : (
+              <MdTranslate size={18} aria-hidden='true' />
+            )}
             {/* The label is always present at its final width: hovering must
                 never grow the button and shift the whole toolbar. */}
-            <span className='whitespace-nowrap'>翻译本页</span>
+            <span className='whitespace-nowrap'>{loading ? '翻译中…' : '翻译本页'}</span>
           </button>
 
           <div

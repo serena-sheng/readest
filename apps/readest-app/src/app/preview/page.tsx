@@ -20,6 +20,7 @@ import type { Book } from '@/types/book';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useReaderStore } from '@/store/readerStore';
 import { DEFAULT_SYSTEM_SETTINGS, DEFAULT_VIEW_CONFIG } from '@/services/constants';
+import { add as addMarginNote } from '@/services/marginalia/store';
 
 // Seed the stores the chrome reads during render; a browser tab has no
 // settings service, and an unseeded store crashes the mounted panels before
@@ -31,6 +32,17 @@ if (typeof window !== 'undefined') {
     getView: () => null,
     getViewSettings: () => ({ ...DEFAULT_VIEW_CONFIG }),
   } as never);
+
+  // Margin rail fixtures: the rail renders nothing for anchors it cannot
+  // measure, so the preview needs both the notes and their offsets.
+  const previewNotes = [
+    ['n1', 'epubcfi(/6/4!/4/2/2)', 'translation', '这注定是一个漫长的夜晚。', 150],
+    ['n2', 'epubcfi(/6/4!/4/2/6)', 'dictionary', '约定：约定；盟约；契约。此处指两人之间的承诺。', 330],
+    ['n3', 'epubcfi(/6/4!/4/2/12)', 'note', '这里和第三章的伏笔对上了。', 620],
+  ] as const;
+  for (const [id, anchorCfi, kind, text] of previewNotes) {
+    addMarginNote('preview', { id, anchorCfi, kind, text, at: Date.now() } as never);
+  }
 }
 
 const mkBook = (i: number, title: string, author: string, page: number): Book =>
