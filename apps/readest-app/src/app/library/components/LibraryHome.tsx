@@ -232,7 +232,7 @@ const LibraryHome: React.FC<LibraryHomeProps> = ({
               <button
                 type='button'
                 onClick={onImport}
-                className='text-body underline decoration-study-ink/30 underline-offset-4 hover:decoration-study-ink'
+                className='inline-flex h-10 items-center rounded-control border border-study-ink/15 px-5 text-body text-study-ink transition-colors duration-200 ease-study hover:bg-study-chip'
               >
                 导入书籍
               </button>
@@ -276,7 +276,7 @@ const LibraryHome: React.FC<LibraryHomeProps> = ({
                             {[
                               currentPage ? `第 ${currentPage} 页` : null,
                               remainingMinutes
-                                ? `还剩 ${formatRemaining(remainingMinutes, _)}`
+                                ? _('{{time}} left', { time: formatRemaining(remainingMinutes, _) })
                                 : null,
                             ]
                               .filter(Boolean)

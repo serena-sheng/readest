@@ -939,7 +939,7 @@
   "Ready": "准备就绪",
   "Chapter Progress": "章节进度",
   "words": "词",
-  "{{time}} left": "剩余 {{time}}",
+  "{{time}} left": "还剩 {{time}}",
   "Reading progress": "阅读进度",
   "Skip back 15 words": "回退 15 词",
   "Back 15 words (Shift+Left)": "回退 15 词 (Shift+Left)",
@@ -1829,8 +1829,8 @@
   "Use OneDrive": "使用 OneDrive",
   "Sync your library, reading progress, and highlights with your Microsoft OneDrive.": "将您的书库、阅读进度和高亮与您的 Microsoft OneDrive 同步。",
   "Readest only accesses the files it creates in your OneDrive.": "Readest 只会访问它在您的 OneDrive 中创建的文件。",
-  "{{minutes}}m left": "{{minutes}}分钟",
-  "{{hours}}h left": "{{hours}}小时",
+  "{{minutes}}m left": "{{minutes}} 分钟",
+  "{{hours}}h left": "{{hours}} 小时",
   "Time Remaining": "剩余时间",
   "Theme": "主题",
   "Only while reading": "仅在阅读时",
@@ -2550,5 +2550,6 @@
   "Expressive": "富有表现力",
   "Show Page Thumbnails": "显示页面缩略图",
   "Translating {{done}}/{{total}}": "翻译中 {{done}}/{{total}}",
-  "Translation ready · {{count}} paragraphs": "翻译完成 · {{count}} 段"
+  "Translation ready · {{count}} paragraphs": "翻译完成 · {{count}} 段",
+  "{{hours}}h {{minutes}}m left": "{{hours}} 小时 {{minutes}} 分"
 }

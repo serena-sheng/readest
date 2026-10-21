@@ -191,8 +191,34 @@ function Preview() {
     );
   }
 
+  if (view === 'empty') {
+    return (
+      <div className='min-h-screen bg-[var(--color-study-canvas)]'>
+        <LibraryHome
+          books={[]}
+          onOpenBook={() => {}}
+          onShowAll={() => {}}
+          onSearch={() => {}}
+          onImport={() => {}}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className='min-h-screen bg-[var(--color-study-canvas)]'>
+    <div
+      className='min-h-screen bg-[var(--color-study-canvas)]'
+      style={
+        view === 'dark'
+          ? ({
+              '--color-study-canvas': '#141210',
+              '--color-study-page': '#1B1815',
+              '--color-study-ink': '#E9E2D5',
+              '--color-study-chip': '#2A2620',
+            } as React.CSSProperties)
+          : undefined
+      }
+    >
       <LibraryHome
         books={BOOKS}
         onOpenBook={() => {}}

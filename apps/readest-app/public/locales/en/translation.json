@@ -127,5 +127,6 @@
   "{{count}} pages left_one": "{{count}} page left",
   "{{count}} pages left_other": "{{count}} pages left",
   "{{time}} and {{count}} pages left_one": "{{time}} and {{count}} page left",
-  "{{time}} and {{count}} pages left_other": "{{time}} and {{count}} pages left"
+  "{{time}} and {{count}} pages left_other": "{{time}} and {{count}} pages left",
+  "{{time}} left": "{{time}} left"
 }

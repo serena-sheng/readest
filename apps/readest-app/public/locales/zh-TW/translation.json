@@ -934,7 +934,7 @@
   "Ready": "準備就緒",
   "Chapter Progress": "章節進度",
   "words": "詞",
-  "{{time}} left": "剩餘 {{time}}",
+  "{{time}} left": "還剩 {{time}}",
   "Reading progress": "閱讀進度",
   "Skip back 15 words": "回退 15 詞",
   "Back 15 words (Shift+Left)": "回退 15 詞 (Shift+Left)",
