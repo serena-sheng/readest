@@ -36,6 +36,13 @@ import { eventDispatcher } from '@/utils/event';
 import { transferManager } from '@/services/transferManager';
 import { purgeCloudBookData } from '@/services/purgeCloudBookData';
 import { isReadestCloudStorageActive } from '@/services/sync/cloudSyncProvider';
+import { createTauriMangaFs } from '@/services/manga/import/fs';
+import {
+  prepareFolderImport,
+  prepareImportSelection,
+  type MangaImportDeps,
+} from '@/services/manga/epub/importHook';
+import { isMangaArchiveName } from '@/services/manga/epub/convertMangaToEpub';
 import { getFilename, getFolderImportGroupName, joinScannedPath } from '@/utils/path';
 import { parseOpenWithFiles } from '@/helpers/openWith';
 import { getInitializedAppService, isTauriAppPlatform } from '@/services/environment';
@@ -934,6 +941,30 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demoBooks, libraryLoaded]);
 
+  /**
+   * Conversion writes the generated EPUB into Readest's own Books directory
+   * and hands the resulting path to `ingestFile`, so covers, hashing and
+   * dedup behave exactly like a normal import. Web builds have no path to
+   * hand over, so they pass the blob as a `File` instead.
+   */
+  const buildMangaImportDeps = (service: AppService): MangaImportDeps => ({
+    fs: isTauriAppPlatform() ? createTauriMangaFs() : undefined,
+    onCoverProgress: (title) => {
+      eventDispatcher.dispatch('hint', {
+        bookKey: '',
+        message: _('正在识别封面：{{title}}', { title }),
+      });
+    },
+    persistEpub: async (fileName, blob) => {
+      const file = new File([blob], fileName, { type: 'application/epub+zip' });
+      if (service.appPlatform !== 'tauri') return file;
+      // A File streams through plugin-fs; an ArrayBuffer would copy the whole
+      // (often hundreds-of-MB) EPUB before the write even starts.
+      await service.writeFile(fileName, 'Books', file);
+      return service.resolveFilePath(fileName, 'Books');
+    },
+  });
+
   const importBooks = (
     files: SelectedFile[],
     groupId?: string,
@@ -974,11 +1005,55 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     const appBooksPrefix: string | null =
       useSettingsStore.getState().settings.localBooksDir || null;
 
+    // Manga archives are converted before ingest. The count only covers manga
+    // candidates so the progress message reads "(2/3)" rather than including
+    // the unrelated EPUBs and PDFs in the same batch.
+    const mangaDeps = appService ? buildMangaImportDeps(appService) : undefined;
+    const mangaTotal = files.filter((selectedFile) =>
+      isMangaArchiveName(selectedFile.name || selectedFile.file?.name || selectedFile.path || ''),
+    ).length;
+    let mangaIndex = 0;
+    let convertedCount = 0;
+
     const processFile = async (selectedFile: SelectedFile): Promise<Book | null> => {
-      const file = selectedFile.file || selectedFile.path;
+      let file = selectedFile.file || selectedFile.path;
       if (!file) return null;
       if (!appService) return null;
       try {
+        const sourceName = selectedFile.name || (typeof file === 'string' ? file : file.name);
+        if (mangaDeps && isMangaArchiveName(sourceName)) {
+          mangaIndex += 1;
+          const mangaPosition = mangaIndex;
+          // The cover hint fires inside the hook; the conversion hint is
+          // dispatched through the callback so it always comes second.
+          const prepared = await prepareImportSelection(selectedFile, {
+            ...mangaDeps,
+            onConvertProgress: (title) => {
+              eventDispatcher.dispatch('hint', {
+                bookKey: '',
+                message: _('正在转换漫画：{{title}} ({{index}}/{{total}})', {
+                  title,
+                  index: mangaPosition,
+                  total: mangaTotal,
+                }),
+              });
+            },
+          });
+          if (prepared?.converted) {
+            file = prepared.importTarget;
+            convertedCount += 1;
+          } else if (prepared?.error) {
+            // Fall through with the original archive: one bad conversion must
+            // not block the rest of the batch.
+            eventDispatcher.dispatch('toast', {
+              message: _('漫画转换失败，已按原文件导入：{{title}}', {
+                title: prepared.title,
+              }),
+              timeout: 4000,
+              type: 'warning',
+            });
+          }
+        }
         const { path, basePath } = selectedFile;
         // `groupId` is treated as a tri-state:
         //   - undefined  → caller didn't specify; derive grouping from
@@ -1078,9 +1153,15 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     // interactive mode keep the original behaviour (only when nothing failed).
     if (successfulImports.length > 0 && (options.silent || failedImports.length === 0)) {
       eventDispatcher.dispatch('toast', {
-        message: _('Successfully imported {{count}} book(s)', {
-          count: successfulImports.length,
-        }),
+        message:
+          convertedCount > 0
+            ? _('已导入 {{n}} 本，转换 {{m}} 本', {
+                n: successfulImports.length,
+                m: convertedCount,
+              })
+            : _('Successfully imported {{count}} book(s)', {
+                count: successfulImports.length,
+              }),
         timeout: 2000,
         type: 'success',
       });
@@ -1425,6 +1506,31 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     // the dialog. Manual menu invocations always go through the dialog
     // so users can pick formats and a size threshold before scanning.
     if (dirPath) {
+      // A dropped folder that is really a manga volume (top-level images
+      // only) becomes one EPUB; anything else keeps the normal folder scan.
+      if (appService) {
+        const manga = await prepareFolderImport(dirPath, buildMangaImportDeps(appService));
+        if (manga?.converted) {
+          await importBooks(
+            [
+              typeof manga.importTarget === 'string'
+                ? { path: manga.importTarget }
+                : { file: manga.importTarget },
+            ],
+            getImportTargetGroupId(),
+          );
+          return;
+        }
+        if (manga?.error) {
+          eventDispatcher.dispatch('toast', {
+            message: _('漫画转换失败，已按普通文件夹导入：{{title}}', {
+              title: manga.title,
+            }),
+            timeout: 4000,
+            type: 'warning',
+          });
+        }
+      }
       await runFolderImport({
         directory: dirPath,
         extensions: SUPPORTED_BOOK_EXTS.slice(),
