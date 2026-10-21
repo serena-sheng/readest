@@ -331,7 +331,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
             )}
             {...getBookDataAttributes(bookTitle, bookData?.book?.metadata)}
           >
-            <div aria-hidden='true' className='line-clamp-1 text-left text-[13px] font-medium'>
+            <div aria-hidden='true' className='line-clamp-1 text-left text-meta font-medium'>
               {bookTitle}
             </div>
           </div>

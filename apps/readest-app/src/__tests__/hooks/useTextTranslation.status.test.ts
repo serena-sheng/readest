@@ -188,37 +188,65 @@ describe('translation failure reasons', () => {
   const baseUrl = 'http://127.0.0.1:8790';
 
   test('names a rejected API key instead of the HTTP status', () => {
-    expect(describeTranslationFailure(new Error('emm: HTTP 401'), baseUrl)).toEqual({
+    expect(describeTranslationFailure(new Error('emm: HTTP 401'), { baseUrl })).toEqual({
       key: 'API Key 被拒',
     });
-    expect(describeTranslationFailure(new Error('emm: HTTP 403'), baseUrl)).toEqual({
+    expect(describeTranslationFailure(new Error('emm: HTTP 403'), { baseUrl })).toEqual({
       key: 'API Key 被拒',
     });
   });
 
+  test('reads the status code the OpenAI-compatible layer throws', () => {
+    expect(
+      describeTranslationFailure(
+        Object.assign(new Error('Bad Request'), { statusCode: 401 }),
+        { baseUrl },
+      ),
+    ).toEqual({ key: 'API Key 被拒' });
+    expect(describeTranslationFailure(new Error('Unauthorized'), { providerLabel: 'DeepL' })).toEqual(
+      { key: 'API Key 被拒' },
+    );
+  });
+
   test('names rate limiting', () => {
-    expect(describeTranslationFailure(new Error('emm: HTTP 429'), baseUrl)).toEqual({
+    expect(describeTranslationFailure(new Error('emm: HTTP 429'), { baseUrl })).toEqual({
       key: '请求太频繁',
     });
+    expect(
+      describeTranslationFailure(Object.assign(new Error('Too Many Requests'), { statusCode: 429 }), {
+        baseUrl,
+      }),
+    ).toEqual({ key: '请求太频繁' });
   });
 
   test('names a timeout', () => {
     expect(
-      describeTranslationFailure(new Error('Translation request timed out'), baseUrl),
+      describeTranslationFailure(new Error('Translation request timed out'), { baseUrl }),
     ).toEqual({ key: '请求超时' });
-    expect(describeTranslationFailure(new Error('AbortError'), baseUrl)).toEqual({
+    expect(describeTranslationFailure(new Error('AbortError'), { baseUrl })).toEqual({
+      key: '请求超时',
+    });
+    expect(describeTranslationFailure(new DOMException('x', 'AbortError'), { baseUrl })).toEqual({
       key: '请求超时',
     });
   });
 
   test('names the service it cannot reach and keeps its address', () => {
     expect(
-      describeTranslationFailure(new Error(`emm: 翻译端点不可用（${baseUrl}）`), baseUrl),
+      describeTranslationFailure(new Error(`emm: 翻译端点不可用（${baseUrl}）`), { baseUrl }),
     ).toEqual({ key: '连不上 {{baseUrl}}', values: { baseUrl } });
   });
 
+  test('names the provider instead of a local address it never contacts', () => {
+    const reason = describeTranslationFailure(new TypeError('Failed to fetch'), {
+      providerLabel: 'DeepL',
+    });
+    expect(reason).toEqual({ key: '连不上 {{provider}}', values: { provider: 'DeepL' } });
+    expect(JSON.stringify(reason)).not.toContain('127.0.0.1');
+  });
+
   test('falls back to the provider text without its emm prefix', () => {
-    expect(describeTranslationFailure(new Error('emm: 模型响应为空'), baseUrl)).toEqual({
+    expect(describeTranslationFailure(new Error('emm: 模型响应为空'), { baseUrl })).toEqual({
       key: '模型响应为空',
     });
   });

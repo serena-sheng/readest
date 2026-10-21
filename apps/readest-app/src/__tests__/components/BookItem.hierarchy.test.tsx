@@ -63,7 +63,7 @@ describe('library card information hierarchy', () => {
   it('sets the title at 13/19 · 500 and the meta at 13/18 · 400', () => {
     const { container } = render(<BookItem {...props} book={baseBook} />);
     const title = container.querySelector('h4')!;
-    expect(title.className).toContain('text-[13px]');
+    expect(title.className).toContain('text-meta');
     expect(title.className).toContain('leading-[19px]');
     expect(title.className).toContain('font-medium');
 

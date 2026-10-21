@@ -44,25 +44,53 @@ export interface TranslationFailureReason {
   values?: Record<string, string>;
 }
 
+export interface TranslationFailureContext {
+  /**
+   * Address of the endpoint, passed only by providers that talk to the
+   * reader-configured service (`emm`, either kind). Naming the loopback
+   * default for DeepL or Google would blame an address those never contact.
+   */
+  baseUrl?: string;
+  /** The provider's own display name, used when there is no address. */
+  providerLabel?: string;
+}
+
 /**
  * Turns a provider error into the one thing a reader can act on. Providers
  * throw `emm: …` console jargon (an HTTP status, a URL, a raw `fetch` error);
  * showing that is unreadable, and hiding it behind a count says nothing about
  * what went wrong. The status bar shows this, with the paragraph count as a
  * secondary line.
+ *
+ * The status lives in three places depending on the failure: `name` for a
+ * real abort, `statusCode` for the OpenAI-compatible SDK, and the message for
+ * the hand-built errors. Reading all three is what keeps a 401 from being
+ * reported as a timeout.
  */
 export const describeTranslationFailure = (
   error: unknown,
-  baseUrl: string,
+  { baseUrl, providerLabel }: TranslationFailureContext = {},
 ): TranslationFailureReason => {
+  const name = (error as { name?: unknown } | null)?.name;
+  const statusCode = (error as { statusCode?: unknown } | null)?.statusCode;
   const message = error instanceof Error ? error.message : String(error ?? '');
-  if (/HTTP\s*(401|403)/i.test(message)) return { key: 'API Key 被拒' };
-  if (/HTTP\s*429/i.test(message)) return { key: '请求太频繁' };
-  if (/(AbortError|TimeoutError|timeout|timed out|超时)/i.test(message)) {
-    return { key: '请求超时' };
+
+  // A real AbortError is the request deadline (the reader's own cancel is
+  // filtered out before this is called, by runId and the enabled flag).
+  if (name === 'AbortError' || name === 'TimeoutError') return { key: '请求超时' };
+  if (statusCode === 401 || statusCode === 403 || /Unauthorized|\b(?:401|403)\b/i.test(message)) {
+    return { key: 'API Key 被拒' };
   }
+  if (statusCode === 429 || /rate limit|\b429\b/i.test(message)) {
+    return { key: '请求太频繁' };
+  }
+  // The name is authoritative when present; a provider that only wrote
+  // "AbortError" into the message still means the same thing.
+  if (/(AbortError|timeout|timed out|超时)/i.test(message)) return { key: '请求超时' };
   if (/(NetworkError|Failed to fetch|fetch failed|翻译端点不可用)/i.test(message)) {
-    return { key: '连不上 {{baseUrl}}', values: { baseUrl } };
+    if (baseUrl) return { key: '连不上 {{baseUrl}}', values: { baseUrl } };
+    if (providerLabel) return { key: '连不上 {{provider}}', values: { provider: providerLabel } };
+    return { key: '连不上翻译服务' };
   }
   const detail = message.replace(/^emm:\s*/i, '').trim();
   return { key: detail || '翻译失败' };
@@ -828,7 +856,12 @@ export function useTextTranslation(
       if (!failedElementsRef.current.includes(el)) {
         failedElementsRef.current.push(el);
       }
-      failureReasonRef.current = describeTranslationFailure(err, getActiveEndpoint().baseUrl);
+      // Only the endpoint-backed provider has an address to blame; every
+      // other provider is named by its label instead of the loopback default.
+      failureReasonRef.current = describeTranslationFailure(err, {
+        baseUrl: provider === 'emm' ? getActiveEndpoint().baseUrl : undefined,
+        providerLabel: translator?.label,
+      });
       console.warn('Translation failed:', err);
     } finally {
       // A paragraph that succeeded later in the run is no longer a failure.

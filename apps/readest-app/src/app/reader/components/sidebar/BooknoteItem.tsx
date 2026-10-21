@@ -395,7 +395,7 @@ const BooknoteItem: React.FC<BooknoteItemProps> = ({
                       : editNote.bind(null, item)
                 }
                 className={clsx(
-                  'btn btn-ghost btn-xs p-0 text-blue-500 opacity-0 transition duration-300 ease-in-out hover:border-transparent hover:bg-transparent',
+                  'btn btn-ghost btn-xs p-0 text-primary opacity-0 transition duration-300 ease-in-out hover:border-transparent hover:bg-transparent',
                   actionButtonReveal,
                 )}
                 aria-label={item.note || item.type === 'bookmark' ? _('Edit') : _('Add Note')}

@@ -7,7 +7,7 @@ const read = (file: string) => readFileSync(resolve(process.cwd(), 'src', file),
 const globals = read('styles/globals.css');
 
 const SCALE = {
-  caption: { size: '11px', lineHeight: '16px' },
+  caption: { size: '12px', lineHeight: '17px' },
   meta: { size: '13px', lineHeight: '19px' },
   body: { size: '15px', lineHeight: '26px' },
   title: { size: '19px', lineHeight: '26px' },
@@ -47,7 +47,7 @@ describe('type scale tokens', () => {
     expect(read('app/reader/components/annotator/SelectionActions.tsx')).toContain('text-meta');
     expect(read('app/reader/components/TaskStatusBar.tsx')).toContain('text-body');
     expect(read('components/MenuItem.tsx')).toContain('text-body');
-    expect(read('components/MenuItem.tsx')).toContain('text-caption');
+    expect(read('components/MenuItem.tsx')).toContain('text-meta');
   });
 
   it('keeps no bold or extrabold weight in reader and library chrome', () => {

@@ -17,6 +17,11 @@ const ACCENTED_FILES = [
   'app/library/components/BookItem.tsx',
   'app/library/components/TaggingModal.tsx',
   'app/library/components/GroupingModal.tsx',
+  'app/library/components/GroupItem.tsx',
+  'app/reader/components/sidebar/PageThumbnails.tsx',
+  'app/reader/components/sidebar/TOCItem.tsx',
+  'app/reader/components/sidebar/BooknoteItem.tsx',
+  'app/reader/components/annotator/AnnotationNoteItem.tsx',
 ];
 
 describe('accent colour', () => {
@@ -32,6 +37,10 @@ describe('accent colour', () => {
     expect(read('app/library/components/BookItem.tsx')).toMatch(/fill-primary/);
     expect(read('app/library/components/TaggingModal.tsx')).toMatch(/fill-primary/);
     expect(read('app/library/components/GroupingModal.tsx')).toMatch(/fill-primary/);
+    expect(read('app/library/components/GroupItem.tsx')).toMatch(/fill-primary/);
+    expect(read('app/reader/components/sidebar/PageThumbnails.tsx')).toMatch(/ring-primary/);
+    expect(read('app/reader/components/sidebar/PageThumbnails.tsx')).toMatch(/text-primary/);
+    expect(read('app/reader/components/sidebar/TOCItem.tsx')).toMatch(/text-primary/);
   });
 
   it('gives native range sliders the primary accent, so the footer bar matches', () => {

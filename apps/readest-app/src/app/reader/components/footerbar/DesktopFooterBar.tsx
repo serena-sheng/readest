@@ -113,7 +113,7 @@ const DesktopFooterBar: React.FC<FooterBarChildProps> = ({
   const pageCount = pageCountLabel ? (
     <span
       data-testid='footer-page-count'
-      className='text-base-content/70 shrink-0 text-[13px] tabular-nums whitespace-nowrap'
+      className='text-base-content/70 shrink-0 text-meta tabular-nums whitespace-nowrap'
     >
       {pageCountLabel}
     </span>
@@ -154,7 +154,7 @@ const DesktopFooterBar: React.FC<FooterBarChildProps> = ({
               label={_('Previous Page')}
             />
           )}
-          <PageJumpInput bookKey={bookKey} showPercentage className='text-[13px]' />
+          <PageJumpInput bookKey={bookKey} showPercentage className='text-meta' />
           {showPaginationButtons && (
             <Button
               icon={getNavigationIcon(

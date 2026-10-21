@@ -48,7 +48,7 @@ const PageThumbnail: React.FC<{
         className={clsx(
           'bg-base-100 eink:border-base-content w-full overflow-hidden rounded-sm border',
           isCurrent
-            ? 'eink:ring-base-content border-transparent ring-2 ring-blue-500'
+            ? 'eink:ring-base-content border-transparent ring-2 ring-primary'
             : 'border-base-300',
         )}
         // Every page holds the first page's shape until its image arrives, so
@@ -76,7 +76,7 @@ const PageThumbnail: React.FC<{
         className={clsx(
           'text-xs',
           isCurrent
-            ? 'text-bold-in-eink eink:text-base-content text-blue-500'
+            ? 'text-bold-in-eink eink:text-base-content text-primary'
             : 'text-base-content/50',
         )}
       >

@@ -205,7 +205,7 @@ const BookItem: React.FC<BookItemProps> = ({
             title={book.title}
             className={clsx(
               'overflow-hidden text-ellipsis font-medium',
-              mode === 'grid' && 'block whitespace-nowrap text-[13px] leading-[19px]',
+              mode === 'grid' && 'block whitespace-nowrap text-meta leading-[19px]',
               mode === 'list' && 'line-clamp-1 text-base',
             )}
           >
@@ -237,7 +237,7 @@ const BookItem: React.FC<BookItemProps> = ({
         >
           {isAbsBook && book.readingStatus !== 'finished' ? (
             <div
-              className='text-base-content/55 flex min-w-0 justify-between text-[13px] leading-[18px] font-normal tabular-nums'
+              className='text-base-content/55 flex min-w-0 justify-between text-meta leading-[18px] font-normal tabular-nums'
               role='status'
             >
               <span className='truncate tabular-nums'>

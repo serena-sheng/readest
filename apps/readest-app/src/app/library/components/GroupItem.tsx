@@ -224,7 +224,7 @@ const GroupItem: React.FC<GroupItemProps> = ({
         {isSelectMode && (
           <div className='absolute bottom-1 right-1'>
             {groupSelected ? (
-              <MdCheckCircle className='fill-blue-500' />
+              <MdCheckCircle className='fill-primary' />
             ) : (
               <MdCheckCircleOutline className='fill-gray-300 drop-shadow-xs' />
             )}

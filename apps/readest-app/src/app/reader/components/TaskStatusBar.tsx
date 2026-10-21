@@ -129,7 +129,9 @@ const TaskStatusBar: React.FC<TaskStatusBarProps> = ({
         boxShadow: '0 8px 24px rgba(0,0,0,.12)',
       }}
     >
-      <span className='text-base-content'>{message}</span>
+      <span className='text-base-content max-w-[calc(100vw-2rem)] min-w-0 truncate'>
+        {message}
+      </span>
       {status.kind === 'error' && status.detail && (
         <span className='text-base-content/60 shrink-0 text-xs'>{status.detail}</span>
       )}

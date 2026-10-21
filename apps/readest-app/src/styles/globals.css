@@ -26,8 +26,8 @@
      copy the middle, headings the fourth, and a single display size for the
      few full-bleed numerals (RSVP). Line heights are part of each step so a
      `text-body` never needs a hand-tuned `leading-*` beside it. */
-  --text-caption: 11px;
-  --text-caption--line-height: 16px;
+  --text-caption: 12px;
+  --text-caption--line-height: 17px;
   --text-meta: 13px;
   --text-meta--line-height: 19px;
   --text-body: 15px;

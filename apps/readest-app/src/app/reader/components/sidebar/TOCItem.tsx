@@ -243,7 +243,7 @@ export const CurrentPositionRow: React.FC<{
         onKeyDown={onClick ? (e) => e.key === 'Enter' && handleClick(e) : undefined}
         className={clsx(
           'flex w-full items-center rounded-md py-4 sm:py-2',
-          'text-bold-in-eink sm:bg-base-300/65 sm:text-base-content text-blue-500',
+          'text-bold-in-eink sm:bg-base-300/65 sm:text-base-content text-primary',
           onClick && 'cursor-pointer sm:hover:bg-base-300/75',
         )}
         style={{ paddingInlineStart: `${depth * 12 + 8}px` }}
