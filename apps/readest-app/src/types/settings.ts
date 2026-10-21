@@ -466,6 +466,15 @@ export interface SystemSettings {
    */
   autoImportFlattenFolders?: string[];
 
+  /**
+   * Store the library in iCloud Drive (`Readest/Books`) and point the local
+   * `Books/` directory at it with a symbolic link, so books live in iCloud
+   * only. macOS only; `undefined` means enabled. Device-local (the link is
+   * meaningful only on this machine) and excluded from cloud settings backups
+   * via `BACKUP_SETTINGS_BLACKLIST`.
+   */
+  icloudMirrorEnabled?: boolean;
+
   keepLogin: boolean;
   alwaysOnTop: boolean;
   openBookInNewWindow: boolean;

@@ -55,6 +55,8 @@ mod sentry_config;
 mod spawn_fresh_browser;
 mod transfer_file;
 mod web_browser;
+#[cfg(target_os = "macos")]
+mod icloud_link;
 #[cfg(desktop)]
 mod window_state;
 #[cfg(target_os = "windows")]
@@ -683,6 +685,8 @@ pub fn run() {
             mobi_parser::extract_mobi_cover_full,
             pdf_parser::parse_pdf_metadata,
             pdf_parser::render_pdf_cover,
+            #[cfg(target_os = "macos")]
+            icloud_link::ensure_symlink,
             #[cfg(target_os = "macos")]
             macos::safari_auth::auth_with_safari,
             #[cfg(target_os = "macos")]

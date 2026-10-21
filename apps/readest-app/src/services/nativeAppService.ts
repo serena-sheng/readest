@@ -884,6 +884,11 @@ export class NativeAppService extends BaseAppService {
     }
   }
 
+  /** macOS-only: point the app's Books directory at the iCloud library. */
+  async ensureSymlink(target: string, link: string): Promise<void> {
+    await invoke('ensure_symlink', { target, link });
+  }
+
   async saveFile(
     filename: string,
     content: string | ArrayBuffer | null,

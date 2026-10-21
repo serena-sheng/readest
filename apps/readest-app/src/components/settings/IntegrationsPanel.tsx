@@ -60,6 +60,7 @@ import WebDAVForm from './integrations/WebDAVForm';
 import GoogleDriveForm from './integrations/GoogleDriveForm';
 import OneDriveForm from './integrations/OneDriveForm';
 import ICloudForm from './integrations/ICloudForm';
+import IcloudSettingsRow from './IcloudSettingsRow';
 import S3Form from './integrations/S3Form';
 import { persistCloudProviderEnabled } from './integrations/cloudSync';
 import {
@@ -840,6 +841,8 @@ const IntegrationsPanel: React.FC = () => {
           </div>
         )}
       </div>
+
+      {appService?.isMacOSApp && <IcloudSettingsRow />}
 
       <div className='w-full' data-setting-id='settings.integrations.catalogs'>
         <SectionTitle className='mb-2'>{_('Content Sources')}</SectionTitle>

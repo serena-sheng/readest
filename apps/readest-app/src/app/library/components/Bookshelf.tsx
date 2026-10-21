@@ -58,6 +58,7 @@ import Spinner from '@/components/Spinner';
 import ModalPortal from '@/components/ModalPortal';
 import BookshelfItem from './BookshelfItem';
 import SelectModeActions from './SelectModeActions';
+import { buildDisplayTitles } from '@/utils/series';
 import ShareBookDialog from './ShareBookDialog';
 import { useAuth } from '@/context/AuthContext';
 import GroupingModal from './GroupingModal';
@@ -862,11 +863,16 @@ const Bookshelf: React.FC<BookshelfProps> = ({
       ? selectModeActionsHeight + DEFAULT_FOOTER_HEIGHT
       : DEFAULT_FOOTER_HEIGHT;
 
+  // Display-only numbering for books that share a cleaned title; the stored
+  // `title` is never rewritten, so a later rename cannot strip the number.
+  const displayTitles = useMemo(() => buildDisplayTitles(libraryBooks), [libraryBooks]);
+
   const renderBookshelfItem = useCallback(
     (item: Book | BooksGroup, mode: LibraryViewModeType, shelf: BookshelfDefinition) => (
       <BookshelfItem
         item={item}
         mode={mode}
+        displayTitle={'hash' in item ? displayTitles.get(item.hash) : undefined}
         coverFit={shelf.coverFit || 'crop'}
         skeuomorphicCovers={shelf.skeuomorphicCovers}
         isSelectMode={isSelectMode}
@@ -907,6 +913,7 @@ const Bookshelf: React.FC<BookshelfProps> = ({
       handleUpdateReadingStatus,
       transferProgress,
       showSeriesIndex,
+      displayTitles,
     ],
   );
   const lastShelf = sections.at(-1)?.definition;

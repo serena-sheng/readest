@@ -20,7 +20,7 @@ import { navigateToLogin } from '@/utils/nav';
 import { isReadestCloudStorageActive } from '@/services/sync/cloudSyncProvider';
 import { isFeedBook } from '@/services/rss/feedBookUrl';
 import { isAudiobook } from '@/utils/audiobook';
-import { formatAuthors, formatDescription, formatSeries } from '@/utils/book';
+import { formatAuthors, formatDescription, formatSeries, getSeriesIndex } from '@/utils/book';
 import { splitDuration } from '@/utils/time';
 import { INDETERMINATE_PROGRESS } from '@/utils/transfer';
 import { getBookTags } from '../utils/libraryUtils';
@@ -41,6 +41,8 @@ interface BookItemProps {
   showTimeRemaining: boolean;
   /** Badged on the cover inside a series group, where the breadcrumb names the series. */
   seriesIndex?: number;
+  /** Display-only title (duplicate-title numbering); never persisted. */
+  displayTitle?: string;
 }
 
 const BookItem: React.FC<BookItemProps> = ({
@@ -56,6 +58,7 @@ const BookItem: React.FC<BookItemProps> = ({
   showBookDetailsModal,
   showTimeRemaining,
   seriesIndex,
+  displayTitle,
 }) => {
   const _ = useTranslation();
   const router = useRouter();
@@ -88,6 +91,8 @@ const BookItem: React.FC<BookItemProps> = ({
     : undefined;
 
   const seriesText = formatSeries(book.metadata?.series, book.metadata?.seriesIndex);
+  const seriesOrder = getSeriesIndex(book.metadata?.seriesIndex);
+  const title = displayTitle ?? book.title;
   // Synced rows may carry untrimmed or duplicate tags; show each tag once.
   const tags = getBookTags(book);
 
@@ -202,22 +207,27 @@ const BookItem: React.FC<BookItemProps> = ({
       >
         <div className={clsx('min-w-0 flex-1', mode === 'list' && 'flex flex-col gap-1')}>
           <h4
-            title={book.title}
+            title={title}
             className={clsx(
               'overflow-hidden text-ellipsis font-medium',
               mode === 'grid' && 'block whitespace-nowrap text-meta leading-[19px]',
               mode === 'list' && 'line-clamp-1 text-base',
             )}
           >
-            {book.title}
+            {title}
           </h4>
+          {seriesOrder !== undefined && (
+            <p className='text-base-content/55 truncate text-[11px] leading-[15px] tabular-nums'>
+              {`第 ${seriesOrder} 卷`}
+            </p>
+          )}
           {mode === 'list' && (
             <p className='text-neutral-content line-clamp-1 text-sm'>
               {formatAuthors(book.author, book.primaryLanguage) || ''}
             </p>
           )}
         </div>
-        {mode === 'list' && seriesText && (
+        {mode === 'list' && seriesText && seriesOrder === undefined && (
           <p className='text-neutral-content line-clamp-1 text-sm'>{seriesText}</p>
         )}
         {mode === 'list' && (

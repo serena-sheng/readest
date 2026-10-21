@@ -105,6 +105,8 @@ interface BookshelfItemProps {
   handleUpdateReadingStatus: (book: Book, status: ReadingStatus | undefined) => void;
   showTimeRemaining: boolean;
   showSeriesIndex?: boolean;
+  /** Display-only title for books sharing a cleaned title (never persisted). */
+  displayTitle?: string;
 }
 
 const BookshelfItem: React.FC<BookshelfItemProps> = ({
@@ -126,6 +128,7 @@ const BookshelfItem: React.FC<BookshelfItemProps> = ({
   handleUpdateReadingStatus,
   showTimeRemaining,
   showSeriesIndex,
+  displayTitle,
 }) => {
   const _ = useTranslation();
   const { appService } = useEnv();
@@ -494,6 +497,7 @@ const BookshelfItem: React.FC<BookshelfItemProps> = ({
               showBookDetailsModal={showBookDetailsModal}
               showTimeRemaining={showTimeRemaining}
               seriesIndex={seriesIndex}
+              displayTitle={'format' in item ? displayTitle : undefined}
             />
           ) : (
             <GroupItem

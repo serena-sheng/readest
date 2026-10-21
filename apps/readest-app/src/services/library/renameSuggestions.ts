@@ -10,12 +10,16 @@
  */
 
 import { getActiveEndpoint } from '@/services/translators/endpoints';
+import { parseSeriesOrder, stripSeriesOrder } from '@/utils/series';
 
 export interface RenameBookInput {
   hash: string;
   title: string;
   author?: string;
   language?: string;
+  /** Known series fields; when absent they are parsed from `title`. */
+  series?: string;
+  seriesIndex?: number;
 }
 
 export interface RenameCandidate {
@@ -23,6 +27,9 @@ export interface RenameCandidate {
   currentTitle: string;
   suggestedTitle: string;
   reason: string;
+  /** Series name and volume read from the title *before* it was cleaned. */
+  series?: string;
+  seriesIndex?: number;
 }
 
 export interface RenameEndpoint {
@@ -59,11 +66,19 @@ const resolveEndpoint = (override?: RenameEndpoint | null): RenameEndpoint | nul
   return { baseUrl, model, ...(apiKey ? { apiKey } : {}) };
 };
 
+const seriesFields = (book: RenameBookInput): Pick<RenameCandidate, 'series' | 'seriesIndex'> => {
+  const parsed = parseSeriesOrder(book.title);
+  const series = book.series?.trim() || parsed.series;
+  const seriesIndex = typeof book.seriesIndex === 'number' ? book.seriesIndex : parsed.seriesIndex;
+  return { ...(series ? { series } : {}), ...(seriesIndex !== undefined ? { seriesIndex } : {}) };
+};
+
 const conservativeResult = (book: RenameBookInput): RenameCandidate => ({
   hash: book.hash,
   currentTitle: book.title,
   suggestedTitle: book.title,
   reason: FAILURE_REASON,
+  ...seriesFields(book),
 });
 
 const batchContent = (batch: RenameBookInput[]): string =>
@@ -122,11 +137,13 @@ const parseBatch = (content: unknown, batch: RenameBookInput[]): RenameCandidate
 
   return batch.map((book, index) => {
     const answer = answers.get(index + 1);
+    const suggested = answer ? stripSeriesOrder(answer.title) || answer.title : book.title;
     return {
       hash: book.hash,
       currentTitle: book.title,
-      suggestedTitle: answer?.title ?? book.title,
+      suggestedTitle: suggested,
       reason: answer?.why ?? '',
+      ...seriesFields(book),
     };
   });
 };

@@ -9,6 +9,7 @@ import { initReplicaSync } from '@/services/sync/replicaSync';
 import { createSettingsCursorStore } from '@/services/sync/replicaCursorStore';
 import { startReplicaTransferIntegration } from '@/services/sync/replicaTransferIntegration';
 import { enableReplicaAutoPersist } from '@/services/sync/replicaPersist';
+import { isIcloudLibraryEnabled, setupIcloudLibrary } from '@/services/icloud/icloudStartup';
 
 interface EnvContextType {
   envConfig: EnvConfigType;
@@ -27,9 +28,16 @@ export const EnvProvider = ({ children }: { children: ReactNode }) => {
     envConfig
       .getAppService()
       .then(async (service) => {
-        setAppService(service);
         try {
           const settings = await service.loadSettings();
+          if (isIcloudLibraryEnabled(settings)) {
+            // Must run before the library is read: on first use it moves the
+            // books into iCloud Drive and links `Books/` at them.
+            const icloud = await setupIcloudLibrary(service);
+            if (icloud && icloud.migration.failed.length > 0) {
+              console.warn('[iCloud] library setup failed:', icloud.migration.error);
+            }
+          }
           if (settings.replicaDeviceId) {
             const ctx = initReplicaSync({
               deviceId: settings.replicaDeviceId,
@@ -39,8 +47,9 @@ export const EnvProvider = ({ children }: { children: ReactNode }) => {
             startReplicaTransferIntegration(service);
           }
         } catch (err) {
-          console.warn('replica sync init failed', err);
+          console.warn('App service post-init setup failed', err);
         }
+        setAppService(service);
       })
       // Every page gates its render on a non-null `appService`, so an
       // unhandled rejection here is invisible: no error, no UI, just a blank

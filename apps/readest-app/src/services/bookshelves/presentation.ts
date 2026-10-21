@@ -15,6 +15,7 @@ import {
   withTimeRemainingLast,
   resolveCurrentShelfBooks,
 } from '@/app/library/utils/libraryUtils';
+import { arrangeSeriesAdjacent } from '@/utils/series';
 
 export const generateBookshelfItems = (
   books: Book[],
@@ -125,6 +126,7 @@ export const presentBookshelf = (
   );
   groups.forEach((group) => {
     group.books.sort(withinGroupSorter);
+    group.books.splice(0, group.books.length, ...arrangeSeriesAdjacent(group.books));
   });
 
   // Sort ungrouped books - use within-group sorter if we're inside a group
@@ -143,9 +145,10 @@ export const presentBookshelf = (
     ungroupedBooks.sort(withinGroupSorter);
     // When inside a group, books are already sorted correctly — return directly
     // to avoid the merge sort below overriding the within-group sort order
-    return ungroupedBooks;
+    return arrangeSeriesAdjacent(ungroupedBooks);
   } else {
     ungroupedBooks.sort(withTimeRemainingLast<Book>(sortBy, bookSorter));
+    ungroupedBooks.splice(0, ungroupedBooks.length, ...arrangeSeriesAdjacent(ungroupedBooks));
   }
 
   // Merge groups and ungrouped books, then sort them together

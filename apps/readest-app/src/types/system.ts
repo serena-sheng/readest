@@ -164,6 +164,12 @@ export interface AppService {
    * the current session.
    */
   allowPathsInScopes?(paths: string[], isDirectory: boolean): Promise<void>;
+  /**
+   * Make `link` a symbolic link pointing at `target`. No-op when `link` is
+   * already the correct link; rejects when `link` exists as anything else.
+   * macOS only (used to store the library in iCloud Drive).
+   */
+  ensureSymlink?(target: string, link: string): Promise<void>;
   // Pass `null` for `content` when `options.filePath` already points to the
   // file on disk you want to save/share — the native share path reads it
   // directly instead of buffering an in-memory copy.

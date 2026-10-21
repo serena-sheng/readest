@@ -49,6 +49,8 @@ const RenameSuggestionsDialog: React.FC<RenameSuggestionsDialogProps> = ({
         title: book.title,
         author: book.author,
         language: book.primaryLanguage,
+        series: book.metadata?.series,
+        seriesIndex: book.metadata?.seriesIndex,
       })),
       {
         signal: controller.signal,
@@ -101,6 +103,19 @@ const RenameSuggestionsDialog: React.FC<RenameSuggestionsDialogProps> = ({
     setRows((prev) => prev.map((row) => (row.hash === hash ? { ...row, title } : row)));
   };
 
+  const handleSeriesIndexChange = (hash: string, raw: string) => {
+    const parsed = parseFloat(raw);
+    const seriesIndex = Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.hash !== hash) return row;
+        return seriesIndex === undefined
+          ? { ...row, seriesIndex: undefined }
+          : { ...row, seriesIndex };
+      }),
+    );
+  };
+
   const handleSelectChanged = () => {
     setRows((prev) =>
       prev.map((row) => ({
@@ -125,7 +140,13 @@ const RenameSuggestionsDialog: React.FC<RenameSuggestionsDialogProps> = ({
       await saveBookMetadataEdit(
         envConfig,
         book,
-        { ...base, title: row.title.trim() },
+        {
+          ...base,
+          title: row.title.trim(),
+          ...(row.seriesIndex !== undefined
+            ? { series: row.series ?? row.title.trim(), seriesIndex: row.seriesIndex }
+            : {}),
+        },
         book.tags ?? [],
         isLoggedIn,
       );
@@ -193,6 +214,22 @@ const RenameSuggestionsDialog: React.FC<RenameSuggestionsDialogProps> = ({
                         value={row.title}
                         onChange={(e) => handleTitleChange(row.hash, e.target.value)}
                       />
+                      {row.seriesIndex !== undefined && (
+                        <div className='text-base-content/60 mt-1 flex items-center gap-1 text-caption'>
+                          <span aria-hidden>·</span>
+                          <span>第</span>
+                          <input
+                            type='number'
+                            min={0}
+                            step={1}
+                            className='input input-xs eink-bordered w-14 px-1 text-center'
+                            aria-label={_('卷号：{{title}}', { title: row.currentTitle })}
+                            value={row.seriesIndex}
+                            onChange={(e) => handleSeriesIndexChange(row.hash, e.target.value)}
+                          />
+                          <span>卷</span>
+                        </div>
+                      )}
                     </td>
                     <td className='text-base-content/50 align-top text-xs break-words'>
                       {row.reason}

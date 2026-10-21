@@ -25,7 +25,9 @@ import {
   getStableMetadataHash,
   parseSeriesPosition,
   getBookDocPageCount,
+  getSeriesIndex,
 } from '@/utils/book';
+import { parseSeriesOrder } from '@/utils/series';
 import type { BookNav } from '@/services/nav';
 import { partialMD5, md5 } from '@/utils/md5';
 import { getBaseFilename, getFilename, stripDuplicateMarker } from '@/utils/path';
@@ -749,6 +751,16 @@ export async function importBook(
         book.metadata.series = formatTitle(series.name);
         book.metadata.seriesIndex = parseSeriesPosition(series.position);
         if (series.total) book.metadata.seriesTotal = parseInt(series.total, 10);
+      }
+    }
+    // Most scraped files carry the volume only in the title ("书名 第2巻").
+    // Read the order before anything cleans the title, and keep the cleaned
+    // title as the series name so siblings group and sort together.
+    if (book.metadata && getSeriesIndex(book.metadata.seriesIndex) === undefined) {
+      const parsed = parseSeriesOrder(book.title);
+      if (parsed.seriesIndex !== undefined) {
+        book.metadata.seriesIndex = parsed.seriesIndex;
+        if (!book.metadata.series?.trim()) book.metadata.series = parsed.series ?? book.title;
       }
     }
     // update book metadata when reimporting the same book
