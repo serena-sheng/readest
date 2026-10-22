@@ -261,9 +261,16 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
           // differs between layouts, and a stale measurement put it outside the
           // page. One read per render is cheap for a single element.
           const rect = pageImage?.getBoundingClientRect();
-          return rect && rect.width > 0 && rect.height > 0
-            ? { left: `${Math.round(rect.right) - 60}px`, top: `${Math.round(rect.bottom) - 60}px` }
-            : { right: '16px', bottom: '16px' };
+          if (!rect || rect.width <= 0 || rect.height <= 0) {
+            return { right: '16px', bottom: '16px' };
+          }
+          // Anchor by `right` so the expanded sheet grows leftwards; anchoring
+          // by `left` let a 168px panel spill past the viewport edge.
+          const inset = 12;
+          return {
+            right: `${Math.round(window.innerWidth - rect.right + inset)}px`,
+            bottom: `${Math.round(window.innerHeight - rect.bottom + inset)}px`,
+          };
         })()}
       >
         {menuOpen && (
