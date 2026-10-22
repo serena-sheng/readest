@@ -219,16 +219,28 @@ function Preview() {
           <div className='flex h-11 items-center px-6 text-section font-medium text-study-ink'>目录</div>
           <ul className='mt-4'>
             {chapters.map(([label, page], i) => (
-              <li
-                key={label}
-                className={`flex h-11 items-baseline gap-2 border-s-2 px-6 ${
-                  i === 2 ? 'border-primary' : 'border-transparent'
-                }`}
-              >
+              <li key={label} className='relative flex h-11 items-baseline gap-2 px-6'>
+                {i === 2 && (
+                  <span
+                    aria-hidden
+                    className='absolute inset-y-0 start-0 w-[2px]'
+                    style={{ background: '#305F4B' }}
+                  />
+                )}
                 <span className={`min-w-0 truncate text-body ${i === 2 ? 'text-study-ink' : 'text-study-ink/75'}`}>
                   {label}
                 </span>
-                <span aria-hidden className='mb-1 min-w-4 flex-1 self-center border-b border-dotted border-study-ink/20' />
+                <span
+                  aria-hidden
+                  className='mb-1 min-w-4 flex-1 self-center text-study-ink'
+                  style={{
+                    height: '1px',
+                    backgroundImage:
+                      'radial-gradient(circle, color-mix(in srgb, currentColor 40%, transparent) 1px, transparent 1px)',
+                    backgroundSize: '6px 1px',
+                    backgroundRepeat: 'repeat-x',
+                  }}
+                />
                 <span className='shrink-0 text-meta tabular-nums text-study-ink/55'>{page}</span>
               </li>
             ))}

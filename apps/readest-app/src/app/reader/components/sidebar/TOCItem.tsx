@@ -164,7 +164,14 @@ const TOCItemView = React.memo<{
         {(item.location || item.index !== undefined) && (
           <span
             aria-hidden='true'
-            className='border-study-ink/20 mb-1 min-w-4 flex-1 self-center border-b border-dotted'
+            className='mb-1 min-w-4 flex-1 self-center'
+            style={{
+              height: '1px',
+              backgroundImage:
+                'radial-gradient(circle, color-mix(in srgb, currentColor 45%, transparent) 1px, transparent 1px)',
+              backgroundSize: '6px 1px',
+              backgroundRepeat: 'repeat-x',
+            }}
           />
         )}
         {(item.location || item.index !== undefined) && (
