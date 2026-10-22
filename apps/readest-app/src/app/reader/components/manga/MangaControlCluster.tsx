@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { MdMoreHoriz, MdTranslate } from 'react-icons/md';
 
 import type { MangaTranslationMode } from '@/types/book';
@@ -150,7 +150,7 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
   // Align with the artwork's lower-right corner, not the reading cell's: a
   // fixed-layout page is letterboxed, and a cluster on the white band looks
   // detached from the picture.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!pageImage) {
       setCorner(null);
       return;
@@ -255,8 +255,16 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
     return (
       <div
         ref={rootRef}
-        className='pointer-events-auto absolute z-20 flex flex-col items-end gap-2'
-        style={{ right: corner ? `${corner.right}px` : '12px', bottom: corner ? `${corner.bottom}px` : '12px' }}
+        className='pointer-events-auto fixed z-30 flex flex-col items-end gap-2'
+        style={(() => {
+          // Read the artwork's viewport box directly: the cluster's own parent
+          // differs between layouts, and a stale measurement put it outside the
+          // page. One read per render is cheap for a single element.
+          const rect = pageImage?.getBoundingClientRect();
+          return rect && rect.width > 0 && rect.height > 0
+            ? { left: `${Math.round(rect.right) - 60}px`, top: `${Math.round(rect.bottom) - 60}px` }
+            : { right: '16px', bottom: '16px' };
+        })()}
       >
         {menuOpen && (
           <div className='w-[168px] rounded-[8px] border border-study-ink/10 bg-study-page p-1'>
