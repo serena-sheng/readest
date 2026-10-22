@@ -305,7 +305,7 @@ const MarginRail: React.FC<MarginRailProps> = ({
           >
             <button
               type='button'
-              className='bg-study-ink/35 hover:bg-study-ink/70 absolute h-2 w-2 cursor-pointer rounded-full transition-colors duration-150 ease-study'
+              className='bg-study-ink/40 hover:bg-study-ink/70 absolute h-2.5 w-2.5 cursor-pointer rounded-full transition-colors duration-150 ease-study outline-none ring-primary/40 focus-visible:ring-2'
               style={{ insetInlineStart: -4, top: 6 }}
               data-testid='margin-badge'
               data-anchor-cfi={group.anchorCfi}

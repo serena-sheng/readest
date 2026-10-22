@@ -101,6 +101,20 @@ function Preview() {
   const params = useSearchParams();
   const view = params?.get('v') ?? 'home';
   const state = params?.get('state') ?? 'idle';
+  const wake = params?.get('wake') === '1';
+
+  React.useEffect(() => {
+    if (!wake) return;
+    const idle = window.setTimeout(() => {
+      // Headless screenshots cannot hover, so the preview nudges the two
+      // hover-only surfaces the way a pointer would.
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: innerWidth - 40, clientY: innerHeight - 40 }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: innerWidth - 30, clientY: innerHeight - 30 }));
+      window.dispatchEvent(new PointerEvent('pointerdown', { clientX: innerWidth - 30, clientY: innerHeight - 30 }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 700, clientY: 6 }));
+    }, 600);
+    return () => clearTimeout(idle);
+  }, [wake]);
   const [pageImg, setPageImg] = React.useState<HTMLImageElement | null>(null);
 
 
@@ -186,6 +200,42 @@ function Preview() {
             measureAnchor={(cfi) => anchorOffsets[cfi] ?? null}
             measurePage={() => ({ left: 0, top: 0, width: 720, height: 900, right: 720, bottom: 900 })}
           />
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'sidebar') {
+    const chapters = [
+      ['第一章 初遇', 1],
+      ['第二章 雨夜', 24],
+      ['第三章 那封没有寄出的信', 42],
+      ['第四章 归途', 78],
+      ['第五章 重逢', 116],
+    ] as const;
+    return (
+      <div className='flex h-screen bg-[var(--color-study-canvas)]'>
+        <aside className='flex w-[320px] flex-col border-e border-study-ink/10'>
+          <div className='flex h-11 items-center px-6 text-section font-medium text-study-ink'>目录</div>
+          <ul className='mt-4'>
+            {chapters.map(([label, page], i) => (
+              <li
+                key={label}
+                className={`flex h-11 items-baseline gap-2 border-s-2 px-6 ${
+                  i === 2 ? 'border-primary' : 'border-transparent'
+                }`}
+              >
+                <span className={`min-w-0 truncate text-body ${i === 2 ? 'text-study-ink' : 'text-study-ink/75'}`}>
+                  {label}
+                </span>
+                <span aria-hidden className='mb-1 min-w-4 flex-1 self-center border-b border-dotted border-study-ink/20' />
+                <span className='shrink-0 text-meta tabular-nums text-study-ink/55'>{page}</span>
+              </li>
+            ))}
+          </ul>
+        </aside>
+        <div className='flex-1 px-[72px] pt-[96px] text-[17px] leading-[29px] text-study-ink'>
+          她合上书，窗外的雨还没有停。这样的夜晚总让人想起很多年前的那个约定。
         </div>
       </div>
     );

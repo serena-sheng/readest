@@ -86,6 +86,11 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [corner, setCorner] = useState<{ right: number; bottom: number } | null>(null);
+  // A phone-sized window cannot host a 280px toolbar over the art: it collapses
+  // to a single button that opens the same choices vertically.
+  const [compact, setCompact] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 640,
+  );
   const rootRef = useRef<HTMLDivElement>(null);
 
   const translated = mode !== 'off';
@@ -103,6 +108,12 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
     update();
     query.addEventListener?.('change', update);
     return () => query.removeEventListener?.('change', update);
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setCompact(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   useEffect(() => {
@@ -157,16 +168,24 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
       // Sit just inside the artwork: straddling its edge made the cluster read
       // as a floating toolbar rather than a note tucked into the page.
       const inset = 12;
-      setCorner({
-        right: hostRect.right - (rect.right + (frameRect?.left ?? 0)) + inset,
-        bottom: hostRect.bottom - (rect.bottom + (frameRect?.top ?? 0)) + inset,
-      });
+      const next = {
+        right: Math.round(hostRect.right - (rect.right + (frameRect?.left ?? 0)) + inset),
+        bottom: Math.round(hostRect.bottom - (rect.bottom + (frameRect?.top ?? 0)) + inset),
+      };
+      // Writing an unchanged corner on every observer tick would re-render in a
+      // loop; only commit real movement.
+      setCorner((prev) => (prev && prev.right === next.right && prev.bottom === next.bottom ? prev : next));
     };
     measure();
+    // The image may not have laid out on the first pass (and can reflow when
+    // the window or the zoom changes), so measure again next frame and follow
+    // its box.
+    const raf = requestAnimationFrame(measure);
     const frameView = pageImage.ownerDocument?.defaultView ?? null;
     window.addEventListener('resize', measure);
     frameView?.addEventListener('resize', measure);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener('resize', measure);
       frameView?.removeEventListener('resize', measure);
     };
@@ -230,6 +249,61 @@ const MangaControlCluster: React.FC<MangaControlClusterProps> = ({
     },
     [onSelectMode],
   );
+
+  if (compact) {
+    const [modeLabel] = MANGA_DISPLAY_OPTIONS.filter((o) => o.mode === mode).map((o) => o.label);
+    return (
+      <div
+        ref={rootRef}
+        className='pointer-events-auto absolute z-20 flex flex-col items-end gap-2'
+        style={{ right: corner ? `${corner.right}px` : '12px', bottom: corner ? `${corner.bottom}px` : '12px' }}
+      >
+        {menuOpen && (
+          <div className='w-[168px] rounded-[8px] border border-study-ink/10 bg-study-page p-1'>
+            <button
+              type='button'
+              disabled={translateDisabled}
+              onClick={() => {
+                setMenuOpen(false);
+                onTranslate();
+              }}
+              className='flex w-full items-center gap-2 rounded-[4px] px-2 py-2 text-[12px] text-study-ink hover:bg-study-chip disabled:opacity-35'
+            >
+              <MdTranslate size={16} aria-hidden='true' />
+              翻译本页
+            </button>
+            {MANGA_DISPLAY_OPTIONS.map((option) => (
+              <button
+                key={option.mode}
+                type='button'
+                aria-pressed={option.mode === mode}
+                disabled={option.mode === 'danmaku' && danmakuDisabledReason !== null}
+                onClick={() => {
+                  pickMode(option.mode);
+                  setMenuOpen(false);
+                }}
+                className={`flex w-full items-center justify-between rounded-[4px] px-2 py-2 text-[12px] hover:bg-study-chip disabled:opacity-35 ${
+                  option.mode === mode ? 'font-medium text-study-ink' : 'text-study-ink/70'
+                }`}
+              >
+                {option.label}
+                {option.mode === mode && <span className='text-primary'>●</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          type='button'
+          aria-label={`漫画翻译：${modeLabel ?? '原文'}`}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+          className='flex h-12 w-12 items-center justify-center rounded-full bg-study-ink text-study-page shadow-[0_2px_8px_rgba(60,45,25,.18)]'
+        >
+          <MdTranslate size={20} aria-hidden='true' />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
